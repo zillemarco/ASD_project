@@ -48,6 +48,13 @@ private:
 			src._isUsed = false;
 		}
 
+		~ListItem()
+		{
+			_isUsed = false;
+			_next = nullptr;
+			_prev = nullptr;
+		}
+
 		ListItem& operator=(const ListItem& src)
 		{
 			if (&src != this)
@@ -91,14 +98,17 @@ public:
 	List(int startingSize = 0, int growBy = 0)
 		: _head(nullptr)
 		, _tail(nullptr)
-		, _freeItemsHead(src._freeItemsHead)
-		, _freeItemsTail(src._freeItemsTail)
+		, _freeItemsHead(nullptr)
+		, _freeItemsTail(nullptr)
 		, _size(0)
 		, _capacity(0)
 		, _growBy(growBy)
 	{
 		// Setup the list
-		Grow(ComputeGrowAmount());
+		if (startingSize > 0)
+			Grow(startingSize);
+		else
+			Grow(ComputeGrowAmount());
 	}
 
 	/**
@@ -175,6 +185,20 @@ public:
 		return *this;
 	}
 
+	/**
+	* Index operator
+	* Returns the element at the given index
+	* If the index is invalid the value returned is the default specified on the template.
+	*/
+	ReferenceType operator[](int index) { return GetAt(index); }
+
+	/**
+	* Index operator
+	* Returns the element at the given index
+	* If the index is invalid the value returned is the default specified on the template.
+	*/
+	ConstReferenceType operator[](int index) const { return GetAt(index); }
+
 private:
 	void Copy(const List& src)
 	{
@@ -208,11 +232,11 @@ private:
 	void Grow(int amount)
 	{
 		// First initialization of the list
-		if (_head == nullptr && _freeItemsHead = nullptr)
+		if (_head == nullptr && _freeItemsHead == nullptr)
 		{
 			if (_tail != nullptr || _freeItemsTail != nullptr)
 			{
-				std::cerr << "List error [Grow]: inconsisten list.";
+				std::cerr << "List error [Grow]: inconsisten list." << std::endl;
 				return;
 			}
 
@@ -239,7 +263,8 @@ private:
 			newItem->_prev = _freeItemsTail;
 
 			// Set the next item of the current tail of the list as the new item
-			_freeItemsTail->_next = newItem;
+			if(_freeItemsTail)
+				_freeItemsTail->_next = newItem;
 
 			// Change the last free item of the list to be the new item
 			_freeItemsTail = newItem;
@@ -250,9 +275,8 @@ private:
 				_freeItemsHead = newItem;
 
 			amount--;
+			_capacity++;
 		}
-
-		_capacity += amount;
 	}
 
 	/**
@@ -274,6 +298,11 @@ private:
 	}
 
 public:
+	/**
+	* Adds and element to the list
+	* Returns the list with the new element added
+	* element: the element to add to the list
+	*/
 	List& Add(ValueType element)
 	{
 		// If the capacity and size are the same then the list is full, so make it grow
@@ -282,12 +311,18 @@ public:
 
 		if (_freeItemsHead == nullptr)
 		{
-			std::cerr << "List error [Add]: _currentItem is nullptr. The list is invalid";
+			std::cerr << "List error [Add]: _currentItem is nullptr. The list is invalid" << std::endl;
 			return *this;
 		}
 
 		// Save the element inside the first free item
 		_freeItemsHead->_element = element;
+		_freeItemsHead->_isUsed = true;
+
+		// Memorize the current free items list head next element to use it later since
+		// if _head is nullptr _head->_next is put to nullptr, which is the same as _freeItemsHead->_next
+		// and it can break the list links
+		ListItem* freeItemsHeadNext = _freeItemsHead->_next;
 
 		// If _head is nullptr the list was empty so set it up
 		if (_head == nullptr)
@@ -319,12 +354,250 @@ public:
 				_freeItemsTail = nullptr;
 			}
 			// Set the sencond free item as the free items list head
-			else if (_freeItemsHead->_next)
+			else if (freeItemsHeadNext)
 			{
-				_freeItemsHead->_next->_prev = nullptr;
-				_freeItemsHead = _freeItemsHead->_next
+				freeItemsHeadNext->_prev = nullptr;
+				_freeItemsHead = freeItemsHeadNext;
 			}
 		}
+
+		// Break the link between the last valid item and the first free item
+		_tail->_next = nullptr;
+
+		// Increment the number of stored elements
+		_size++;
+
+		return *this;
+	}
+
+	/**
+	* Removes the element at the given index from the list
+	* Returns the list with the element removed
+	* index: index of the element to remove
+	*/
+	List& RemoveAt(int index)
+	{
+		// Make sure the index is valid
+		if (index < 0 || index >= _size)
+		{
+			std::cerr << "List error [RemoveAt]: invalid index" << std::endl;
+			return *this;
+		}
+
+		// Find the item to remove
+		ListItem* itemToRemove = _head;
+		while (index > 0 && itemToRemove != nullptr && itemToRemove != _tail)
+		{
+			itemToRemove = itemToRemove->_next;
+			index--;
+		}
+
+		// Make sure we have found the item and that it is valid
+		if (index != 0 || itemToRemove == nullptr || itemToRemove->_isUsed == false)
+		{
+			std::cerr << "List error [RemoveAt]: cannot find the item or the item is not valid" << std::endl;
+			return *this;
+		}
+
+		// Set the item as not used
+		itemToRemove->_isUsed = false;
+
+		// If the item to remove is the head, make the head point to the item next to the item to remove
+		if (itemToRemove == _head)
+			_head = itemToRemove->_next;
+
+		// If the item to remove is the tail, make the tail point to the item previous to the item to remove
+		if (itemToRemove == _tail)
+			_tail = itemToRemove->_prev;
+
+		// If the item has a previous item, make it point the the item next to the item to remove
+		if (itemToRemove->_prev)
+			itemToRemove->_prev->_next = itemToRemove->_next;
+
+		// If the item has a next item, make it point the the item previous to the item to remove
+		if(itemToRemove->_next)
+			itemToRemove->_next->_prev = itemToRemove->_prev;
+
+		// Put the item to remove at the end of the free items list
+		itemToRemove->_next = nullptr;
+		itemToRemove->_prev = _freeItemsTail;
+
+		// If there is a free items list tail, change it to point to the item to remove
+		if(_freeItemsTail && _freeItemsTail->_next)
+			_freeItemsTail->_next = itemToRemove;
+		_freeItemsTail = itemToRemove;
+
+		// If there is no free items list head then the valid list was full and the free list was empty,
+		// so set the free list head to point to element just freed
+		if (_freeItemsHead == nullptr)
+			_freeItemsHead = _freeItemsTail;
+
+		// Decrement the size
+		_size--;
+
+		return *this;
+	}
+
+	/**
+	* Returns the element at the given index
+	* If the index is invalid the value returned is the default specified on the template.
+	* index: index of the element to get
+	*/
+	ReferenceType GetAt(int index)
+	{
+		// Make sure the index is valid
+		if (index < 0 || index >= _size)
+		{
+			std::cerr << "List error [GetAt]: invalid index" << std::endl;
+			return Default;
+		}
+
+		// Find the item to remove
+		ListItem* item = _head;
+		while (index > 0 && item != nullptr && item != _tail)
+		{
+			item = item->_next;
+			index--;
+		}
+
+		// Make sure we have found the item and that it is valid
+		if (index != 0 || item == nullptr || item->_isUsed == false)
+		{
+			std::cerr << "List error [GetAt]: cannot find the item or the item is not valid" << std::endl;
+			return Default;
+		}
+
+		// Return the element
+		return item->_element;
+	}
+
+	/**
+	* Returns the element at the given index
+	* If the index is invalid the value returned is the default specified on the template.
+	* index: index of the element to get
+	*/
+	ConstReferenceType GetAt(int index) const
+	{
+		// Make sure the index is valid
+		if (index < 0 || index >= _size)
+		{
+			std::cerr << "List error [GetAt]: invalid index" << std::endl;
+			return Default;
+		}
+
+		// Find the item to remove
+		ListItem* item = _head;
+		while (index > 0 && item != nullptr && item != _tail)
+		{
+			item = item->_next;
+			index--;
+		}
+
+		// Make sure we have found the item and that it is valid
+		if (index != 0 || item == nullptr || item->_isUsed == false)
+		{
+			std::cerr << "List error [GetAt]: cannot find the item or the item is not valid" << std::endl;
+			return Default;
+		}
+
+		// Return the element
+		return item->_element;
+	}
+
+	/**
+	* Clears the list removing the elements
+	* If elementsToKeep is more than 0, then a number of elementsToKeep items will be kept inside the list as unused
+	* to prevent reallocation during next calls to Add.
+	* If the capacity of the list is less than elementsToKeep, the list is grown to fit the gap.
+	* elementsToKeep: number of elements to keep inside the list as unused
+	*/
+	List& Clear(int elementsToKeep = 0)
+	{
+		if (_capacity > 0)
+		{
+			// Only if _size is more than 0 then there are used items to put at the end of the free list
+			if (_size > 0)
+			{
+				// If the free items list is empty put at least one element inside of it to simplify the next code
+				if (_freeItemsHead == nullptr)
+				{
+					if (_freeItemsTail != nullptr)
+					{
+						std::cerr << "List error [Clear]: _freeItemsHead is nullptr but _freeItemsTail is not. Invalid list" << std::endl;
+						return *this;
+					}
+					
+					// Bring the valid items list head to the free items list
+					_freeItemsHead = _head;
+					_freeItemsTail = _freeItemsHead;
+
+					if (_head->_next)
+						_head->_next->_prev = nullptr;
+
+					if (_head == _tail)
+						_tail = nullptr;
+
+					_head = _head->_next;
+				}
+
+				// Check again if _head is valid since the previous code could have set it to nullptr if there was only one valid element inside the list
+				if (_head)
+				{
+					if (_tail == nullptr)
+					{
+						std::cerr << "List error [Clear]: _tail is nullptr but _head is not. Invalid list" << std::endl;
+						return *this;
+					}
+
+					// Put the valid items list at the end of the free items list
+					_freeItemsTail->_next = _head;
+					_head->_prev = _freeItemsTail;
+
+					_freeItemsTail = _tail;
+
+					// Set the used items list head and tail as nullptr to mark the used items list as empty
+					_head = nullptr;
+					_tail = nullptr;
+				}
+			}
+		}
+
+		// If the list cannot hold the number of elements that the calee wants to keep, grow the list to fill the gap
+		if (_capacity < elementsToKeep)
+			Grow(elementsToKeep - _capacity);
+		// Otherwise set the capacity of the list equals to the number of elements to keep
+		else
+			_capacity = elementsToKeep;
+
+		ListItem* currentItem = _freeItemsHead;
+
+		// Mark the element to keep as not used
+		while (elementsToKeep > 0 && currentItem != nullptr)
+		{
+			currentItem->_isUsed = false;
+			currentItem = currentItem->_next;
+			elementsToKeep--;
+		}
+
+		// Set _freeItemsTail as the last item on the free items list
+		if(currentItem)
+			_freeItemsTail = currentItem->_prev;
+
+		// Delete all the remaining elements
+		while (currentItem != nullptr)
+		{
+			ListItem* nextItem = currentItem->_next;
+
+			// Ensure that currentItem previous item doesn't point to currentItem otherwise there
+			// will be errors because _freeItemsTail would have _next to point to dirty memory
+			if (currentItem->_prev)
+				currentItem->_prev->_next = nullptr;
+
+			delete currentItem;
+			currentItem = nextItem;
+		}
+
+		_size = 0;
 
 		return *this;
 	}

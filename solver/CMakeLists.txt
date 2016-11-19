@@ -16,7 +16,7 @@ source_group(common\\src        FILES ${COMMON_SRC})
 source_group(solver\\include    FILES ${SOLVER_INC})
 source_group(solver\\src        FILES ${SOLVER_SRC})
 
-add_executable(${PROJECT_NAME} WIN32 ${COMMON_INC} ${COMMON_SRC} ${SOLVER_INC} ${SOLVER_SRC})
+add_executable(${PROJECT_NAME} ${COMMON_INC} ${COMMON_SRC} ${SOLVER_INC} ${SOLVER_SRC})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RELEASE_POSTFIX        "${RELEASE_SUFFIX}")
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX          "${DEBUG_SUFFIX}")
