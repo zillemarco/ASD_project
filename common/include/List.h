@@ -2,7 +2,19 @@
 
 #include <iostream>
 
-template<typename T, T Default = 0>
+/** Default element destructor used by List. It does nothing */
+template<typename T> struct ListDefaultElementDestructor
+{
+	typedef T& ReferenceType;
+	inline void operator()(ReferenceType element) { }
+};
+
+template<
+	typename T, /** Type of objects to be stored inside the list */
+	T Default = 0, /** Default value of the objects inside the list */
+	typename ElementDtor = ListDefaultElementDestructor<T>, /** Function object which is called by Clear, RemoveAt, Remove or the list destructor */
+	bool CallElementDestructorOnListDestructor = true, /** Wheter or not to call the element destructor function object ElementDtor from the list destructor */
+	bool CallElementDestructorOnListCopy = false> /** Wheter or not to call the element destructor function object ElementDtor from the list assign operator */
 class List
 {
 public:
@@ -118,10 +130,11 @@ public:
 	List(const List& src)
 		: _head(nullptr)
 		, _tail(nullptr)
-		, _currentItem(nullptr)
+		, _freeItemsHead(nullptr)
+		, _freeItemsTail(nullptr)
 		, _size(0)
 		, _capacity(0)
-		, _growBy(growBy)
+		, _growBy(0)
 	{
 		Copy(src);
 	}
@@ -148,7 +161,7 @@ public:
 	/** Destructor */
 	~List()
 	{
-		Clear();
+		Clear(0, CallElementDestructorOnListDestructor);
 	}
 
 public:
@@ -209,11 +222,11 @@ private:
 		if (_head != nullptr || _freeItemsHead != nullptr)
 		{
 			// Clear the list and makes sure that this lists capacity matches the source list capacity
-			Clear(src._capacity);
+			Clear(src._capacity, CallElementDestructorOnListCopy);
 		}
 		else
 		{
-			// If the heada are nullptr then Copy is being called from the copy constructor since otherwise they are ALWAYS not nullptr
+			// If the heads are nullptr then Copy is being called from the copy constructor since otherwise they are ALWAYS not nullptr
 			// Call grow to initialize the pointers and have the same capacity as the source
 			Grow(src._capacity);
 		}
@@ -297,6 +310,60 @@ private:
 		return grow;
 	}
 
+	/**
+	* Utility function used by RemoveAt and Remove.
+	* Moves itemToRemove from the used items list to the free list and calls ElementDtor if told so
+	*/
+	void RemoveElement(ListItem* itemToRemove, bool callElementDestructor)
+	{
+		// Make sure itemToRemove is valid
+		if (itemToRemove == nullptr)
+			return;
+
+		// Call ElementDtor if told so
+		if (callElementDestructor)
+		{
+			ElementDtor dtor;
+			dtor(itemToRemove->_element);
+		}
+
+		// Set the item as not used
+		itemToRemove->_isUsed = false;
+
+		// If the item to remove is the head, make the head point to the item next to the item to remove
+		if (itemToRemove == _head)
+			_head = itemToRemove->_next;
+
+		// If the item to remove is the tail, make the tail point to the item previous to the item to remove
+		if (itemToRemove == _tail)
+			_tail = itemToRemove->_prev;
+
+		// If the item has a previous item, make it point the the item next to the item to remove
+		if (itemToRemove->_prev)
+			itemToRemove->_prev->_next = itemToRemove->_next;
+
+		// If the item has a next item, make it point the the item previous to the item to remove
+		if (itemToRemove->_next)
+			itemToRemove->_next->_prev = itemToRemove->_prev;
+
+		// Put the item to remove at the end of the free items list
+		itemToRemove->_next = nullptr;
+		itemToRemove->_prev = _freeItemsTail;
+
+		// If there is a free items list tail, change it to point to the item to remove
+		if (_freeItemsTail && _freeItemsTail->_next)
+			_freeItemsTail->_next = itemToRemove;
+		_freeItemsTail = itemToRemove;
+
+		// If there is no free items list head then the valid list was full and the free list was empty,
+		// so set the free list head to point to element just freed
+		if (_freeItemsHead == nullptr)
+			_freeItemsHead = _freeItemsTail;
+
+		// Decrement the size
+		_size--;
+	}
+
 public:
 	/**
 	* Adds and element to the list
@@ -374,8 +441,9 @@ public:
 	* Removes the element at the given index from the list
 	* Returns the list with the element removed
 	* index: index of the element to remove
+	* callElementDestructor: if true ElementDestructor will be called passing the element which is being removed
 	*/
-	List& RemoveAt(int index)
+	List& RemoveAt(int index, bool callElementDestructor = false)
 	{
 		// Make sure the index is valid
 		if (index < 0 || index >= _size)
@@ -386,7 +454,7 @@ public:
 
 		// Find the item to remove
 		ListItem* itemToRemove = _head;
-		while (index > 0 && itemToRemove != nullptr && itemToRemove != _tail)
+		while (index > 0 && itemToRemove != nullptr)
 		{
 			itemToRemove = itemToRemove->_next;
 			index--;
@@ -399,45 +467,38 @@ public:
 			return *this;
 		}
 
-		// Set the item as not used
-		itemToRemove->_isUsed = false;
-
-		// If the item to remove is the head, make the head point to the item next to the item to remove
-		if (itemToRemove == _head)
-			_head = itemToRemove->_next;
-
-		// If the item to remove is the tail, make the tail point to the item previous to the item to remove
-		if (itemToRemove == _tail)
-			_tail = itemToRemove->_prev;
-
-		// If the item has a previous item, make it point the the item next to the item to remove
-		if (itemToRemove->_prev)
-			itemToRemove->_prev->_next = itemToRemove->_next;
-
-		// If the item has a next item, make it point the the item previous to the item to remove
-		if(itemToRemove->_next)
-			itemToRemove->_next->_prev = itemToRemove->_prev;
-
-		// Put the item to remove at the end of the free items list
-		itemToRemove->_next = nullptr;
-		itemToRemove->_prev = _freeItemsTail;
-
-		// If there is a free items list tail, change it to point to the item to remove
-		if(_freeItemsTail && _freeItemsTail->_next)
-			_freeItemsTail->_next = itemToRemove;
-		_freeItemsTail = itemToRemove;
-
-		// If there is no free items list head then the valid list was full and the free list was empty,
-		// so set the free list head to point to element just freed
-		if (_freeItemsHead == nullptr)
-			_freeItemsHead = _freeItemsTail;
-
-		// Decrement the size
-		_size--;
+		// Move the item to the free items list
+		RemoveElement(itemToRemove, callElementDestructor);
 
 		return *this;
 	}
 
+	/**
+	* Removes the element at the given index from the list
+	* Returns the list with the element removed
+	* index: index of the element to remove
+	* callElementDestructor: if true ElementDestructor will be called passing the element which is being removed
+	*/
+	List& Remove(ConstReferenceType element, bool callElementDestructor = false)
+	{
+		// Find the item to remove
+		ListItem* itemToRemove = _head;
+		while (itemToRemove != nullptr && itemToRemove->_element != element)
+			itemToRemove = itemToRemove->_next;
+
+		// Make sure we have found the item and that it is valid
+		if (itemToRemove == nullptr || itemToRemove->_isUsed == false)
+		{
+			std::cerr << "List error [Remove]: cannot find the item or the item is not valid" << std::endl;
+			return *this;
+		}
+
+		// Move the item to the free items list
+		RemoveElement(itemToRemove, callElementDestructor);
+
+		return *this;
+	}
+	
 	/**
 	* Returns the element at the given index
 	* If the index is invalid the value returned is the default specified on the template.
@@ -448,8 +509,9 @@ public:
 		// Make sure the index is valid
 		if (index < 0 || index >= _size)
 		{
+			// Output the error to the standard output and throw an exception to stop the execution
 			std::cerr << "List error [GetAt]: invalid index" << std::endl;
-			return Default;
+			throw "List error [GetAt]: invalid index";
 		}
 
 		// Find the item to remove
@@ -463,8 +525,9 @@ public:
 		// Make sure we have found the item and that it is valid
 		if (index != 0 || item == nullptr || item->_isUsed == false)
 		{
+			// Output the error to the standard output and throw an exception to stop the execution
 			std::cerr << "List error [GetAt]: cannot find the item or the item is not valid" << std::endl;
-			return Default;
+			throw "List error [GetAt]: cannot find the item or the item is not valid";
 		}
 
 		// Return the element
@@ -481,8 +544,9 @@ public:
 		// Make sure the index is valid
 		if (index < 0 || index >= _size)
 		{
+			// Output the error to the standard output and throw an exception to stop the execution
 			std::cerr << "List error [GetAt]: invalid index" << std::endl;
-			return Default;
+			throw "List error [GetAt]: invalid index";
 		}
 
 		// Find the item to remove
@@ -496,8 +560,9 @@ public:
 		// Make sure we have found the item and that it is valid
 		if (index != 0 || item == nullptr || item->_isUsed == false)
 		{
+			// Output the error to the standard output and throw an exception to stop the execution
 			std::cerr << "List error [GetAt]: cannot find the item or the item is not valid" << std::endl;
-			return Default;
+			throw "List error [GetAt]: cannot find the item or the item is not valid";
 		}
 
 		// Return the element
@@ -510,8 +575,9 @@ public:
 	* to prevent reallocation during next calls to Add.
 	* If the capacity of the list is less than elementsToKeep, the list is grown to fit the gap.
 	* elementsToKeep: number of elements to keep inside the list as unused
+	* callElementDestructor: if true ElementDestructor will be called passing every element
 	*/
-	List& Clear(int elementsToKeep = 0)
+	List& Clear(int elementsToKeep = 0, bool callElementDestructor = false)
 	{
 		if (_capacity > 0)
 		{
@@ -570,10 +636,15 @@ public:
 			_capacity = elementsToKeep;
 
 		ListItem* currentItem = _freeItemsHead;
+		ElementDtor dtor;
 
 		// Mark the element to keep as not used
 		while (elementsToKeep > 0 && currentItem != nullptr)
 		{
+			// Call ElementDtor only if the item points to a valid element
+			if (currentItem->_isUsed && callElementDestructor)
+				dtor(currentItem->_element);
+
 			currentItem->_isUsed = false;
 			currentItem = currentItem->_next;
 			elementsToKeep--;
@@ -593,15 +664,87 @@ public:
 			if (currentItem->_prev)
 				currentItem->_prev->_next = nullptr;
 
+			// Call ElementDtor only if the item points to a valid element
+			if (currentItem->_isUsed && callElementDestructor)
+				dtor(currentItem->_element);
+
 			delete currentItem;
 			currentItem = nextItem;
 		}
-
+		
+		// Set the size to 0 to mark the list as empty
 		_size = 0;
 
 		return *this;
 	}
 
+	/**
+	* Searched the desired element inside of the list and returns its index
+	* It the element isn't found this returns -1
+	*/
+	int Find(const ValueType& element) const
+	{
+		int index = 0;
+
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_element != element && item->_isUsed)
+		{
+			// Increment the index
+			index++;
+
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// If the item is valid and it used then we have found the element we are looking for
+		// so return the index
+		if (item != nullptr && item->_isUsed)
+			return index;
+
+		// The element wasn't found
+		return -1;
+	}
+
+	/**
+	* This method searches for an element inside the list using a given comparator to see
+	* if an element is the one the user is looking for.
+	* Is the element isn't found the given alternative is returned.
+	* comparator: function object that must implement a member function compliant to the below specifications
+	* alternative: value that is returned if the element which is being searched isn't found
+	*
+	* Comparator member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Comparator> ValueType Find(Comparator comparator, ConstReferenceType alternative = Default)
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_isUsed)
+		{
+			// Call the comparator function object and if it returns true
+			// then the element is the one the user is looking for
+			if (comparator(item->_element))
+				return item->_element;
+
+			// Move to the next item
+			item = item->_next;
+		}
+		
+		// The element wasn't found so return the default
+		return alternative;
+	}
+
+	/** Returns the number of elements inside the list */
+	int GetSize() const { return _size; }
+
+	/** Returns the number of elements that the list can store without the need to allocate more memory */
+	int GetCapacity() const { return _capacity; }
+	
 private:
 	/** Pointer to the first item on the list */
 	ListItem* _head;
