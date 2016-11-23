@@ -1,10 +1,13 @@
 #pragma once
 
+#include "List.h"
+#include "GraphElement.h"
+
 // Forward declaration of used types
 class Node;
 class Graph;
 
-class Edge
+class Edge : public GraphElement
 {
 	friend Graph;
 
@@ -75,3 +78,5 @@ private:
 	/** Pointer to the end node of this edge */
 	Node* _endNode;
 };
+
+template<> struct ListElementDefaultValue<Edge*> { static Edge* Value() { return nullptr; } };

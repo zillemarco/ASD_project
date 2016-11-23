@@ -3,28 +3,27 @@
 
 /** Default constructor */
 Node::Node()
-	: _name("")
+	: GraphElement()
 { }
 
 /** Constructor with basic initialization */
 Node::Node(const std::string& name)
-	: _name(name)
-{ }
+	: GraphElement()
+{
+	SetAttribute("name", name);
+}
 
 /** Copy constructor */
 Node::Node(const Node& src)
-	: _name(src._name)
+	: GraphElement(src)
 	, _edges(src._edges)
 { }
 
 /** Move constructor */
 Node::Node(Node&& src)
-	: _name(src._name)
-	, _edges(src._edges)
-{
-	src._name = "";
-	src._edges.Clear();
-}
+	: GraphElement(src)
+	, _edges(std::move(src._edges))
+{ }
 
 /** Destructor */
 Node::~Node()
@@ -35,6 +34,8 @@ Node::~Node()
 /** Assign operator */
 Node& Node::operator=(const Node& src)
 {
+	GraphElement::operator=(src);
+
 	if (this != &src)
 		Copy(src);
 	return *this;
@@ -43,12 +44,12 @@ Node& Node::operator=(const Node& src)
 /** Move operator */
 Node& Node::operator=(Node&& src)
 {
+	GraphElement::operator=(src);
+
 	if (this != &src)
 	{
-		Copy(src);
-
-		src._name = "";
-		src._edges.Clear();
+		_edges.Clear();
+		_edges = std::move(src._edges);
 	}
 	return *this;
 }
@@ -56,7 +57,6 @@ Node& Node::operator=(Node&& src)
 /** Utility function to use with copy constructor and assign operator */
 void Node::Copy(const Node& src)
 {
-	_name = src._name;
 	_edges = src._edges;
 }
 

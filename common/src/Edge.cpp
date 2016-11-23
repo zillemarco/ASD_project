@@ -3,7 +3,8 @@
 
 /** Default constructor */
 Edge::Edge()
-	: _startNode(nullptr)
+	: GraphElement()
+	, _startNode(nullptr)
 	, _endNode(nullptr)
 { }
 
@@ -13,7 +14,8 @@ Edge::Edge()
 * endNode: is the ending node of this edge. Needs to be non-nullptr
 */
 Edge::Edge(Node* startNode, Node* endNode)
-	: _startNode(startNode)
+	: GraphElement()
+	, _startNode(startNode)
 	, _endNode(endNode)
 {
 	if (_startNode == nullptr)
@@ -33,7 +35,8 @@ Edge::Edge(Node* startNode, Node* endNode)
 
 /** Copy constructor */
 Edge::Edge(const Edge& src)
-	: _startNode(nullptr)
+	: GraphElement(src)
+	, _startNode(nullptr)
 	, _endNode(nullptr)
 {
 	Copy(src);
@@ -41,7 +44,8 @@ Edge::Edge(const Edge& src)
 
 /** Move constructor */
 Edge::Edge(Edge&& src)
-	: _startNode(std::move(src._startNode))
+	: GraphElement(src)
+	, _startNode(std::move(src._startNode))
 	, _endNode(std::move(src._endNode))
 {
 	src._startNode = nullptr;
@@ -58,6 +62,8 @@ Edge::~Edge()
 /** Assign operator */
 Edge& Edge::operator=(const Edge& src)
 {
+	GraphElement::operator=(src);
+
 	if (this != &src)
 		Copy(src);
 	return *this;
@@ -66,9 +72,12 @@ Edge& Edge::operator=(const Edge& src)
 /** Move operator */
 Edge& Edge::operator=(Edge&& src)
 {
+	GraphElement::operator=(src);
+
 	if (this != &src)
 	{
-		Copy(src);
+		_startNode = std::move(src._startNode);
+		_endNode = std::move(src._endNode);
 
 		src._startNode = nullptr;
 		src._endNode = nullptr;

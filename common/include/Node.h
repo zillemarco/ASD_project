@@ -1,6 +1,7 @@
 #pragma once
 
 #include "List.h"
+#include "GraphElement.h"
 
 #include <string>
 
@@ -8,7 +9,7 @@
 class Edge;
 class Graph;
 
-class Node
+class Node : public GraphElement
 {
 	friend Graph;
 
@@ -32,7 +33,7 @@ public:
 	Node(Node&& src);
 
 	/** Destructor */
-	~Node();
+	virtual ~Node();
 
 public:
 	/** Assign operator */
@@ -59,7 +60,7 @@ private:
 	
 public:
 	/** Returns the name of this node */
-	const std::string GetName() const { return _name; }
+	const std::string GetName() const { return GetAttribute("name", "no_name"); }
 
 	/** Returns the list of edges connected to this node */
 	const List<Edge*>& GetEdges() const { return _edges; }
@@ -86,9 +87,8 @@ public:
 	int GetEdgeIndex(Edge* edge) const;
 
 private:
-	/** Represents the name of the node */
-	std::string _name;
-
 	/** List of edges connected to this node */
 	List<Edge*> _edges;
 };
+
+template<> struct ListElementDefaultValue<Node*> { static Node* Value() { return nullptr; } };

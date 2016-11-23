@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <type_traits>
 
 /** Default element destructor used by List. It does nothing */
 template<typename T> struct ListDefaultElementDestructor
@@ -9,9 +10,33 @@ template<typename T> struct ListDefaultElementDestructor
 	inline void operator()(ReferenceType element) { }
 };
 
+/**
+* Utility template to have a default value to use inside of some methods of List
+* The user have to define his own default value doing a template specialization of this struct.
+* 
+* For example, if the user defines a class A to be used by a List a possible template specialization is:
+*	template<> struct ListElementDefaultValue<A>
+*	{
+*		static A Value() { return  A(); }
+*	};
+*/
+template<typename T> struct ListElementDefaultValue
+{
+	//static_assert(false, "A default value wasn't specified for the type.");
+};
+
+/** Default value for basic types */
+template<> struct ListElementDefaultValue<int> { inline static int Value() { return 0; } };
+template<> struct ListElementDefaultValue<unsigned int> { inline static unsigned int Value() { return 0; } };
+template<> struct ListElementDefaultValue<long> { inline static long Value() { return 0; } };
+template<> struct ListElementDefaultValue<unsigned long> { inline static unsigned long Value() { return 0; } };
+template<> struct ListElementDefaultValue<long long> { inline static long long Value() { return 0; } };
+template<> struct ListElementDefaultValue<unsigned long long> { inline static unsigned long long Value() { return 0; } };
+template<> struct ListElementDefaultValue<float> { inline static float Value() { return 0.0f; } };
+template<> struct ListElementDefaultValue<double> { inline static double Value() { return 0; } };
+
 template<
 	typename T, /** Type of objects to be stored inside the list */
-	T Default = 0, /** Default value of the objects inside the list */
 	typename ElementDtor = ListDefaultElementDestructor<T>, /** Function object which is called by Clear, RemoveAt, Remove or the list destructor */
 	bool CallElementDestructorOnListDestructor = true, /** Wheter or not to call the element destructor function object ElementDtor from the list destructor */
 	bool CallElementDestructorOnListCopy = false> /** Wheter or not to call the element destructor function object ElementDtor from the list assign operator */
@@ -25,6 +50,8 @@ public:
 	typedef T* PointerType;
 	typedef T const* ConstPointerType;
 
+	static_assert(!std::is_reference<ValueType>::value, "List cannot store references to objects");
+
 private:
 	struct ListItem
 	{
@@ -35,7 +62,7 @@ private:
 		* prev: the pointer to the previous node on the list
 		* isUsed: true if the element contained by this node is valid
 		*/
-		ListItem(ValueType element = Default, ListItem* next = nullptr, ListItem* prev = nullptr, bool isUsed = false)
+		ListItem(ValueType element, ListItem* next = nullptr, ListItem* prev = nullptr, bool isUsed = false)
 			: _element(element)
 			, _next(next)
 			, _prev(prev)
@@ -50,10 +77,10 @@ private:
 		{ }
 
 		ListItem(ListItem&& src)
-			: _element(src._element)
-			, _next(src._next)
-			, _prev(src._prev)
-			, _isUsed(src._isUsed)
+			: _element(std::move(src._element))
+			, _next(std::move(src._next))
+			, _prev(std::move(src._prev))
+			, _isUsed(std::move(src._isUsed))
 		{
 			src._next = nullptr;
 			src._prev = nullptr;
@@ -83,10 +110,10 @@ private:
 		{
 			if (&src != this)
 			{
-				_element = src._element;
-				_next = src._next;
-				_prev = src._prev;
-				_isUsed = src._isUsed;
+				_element = std::move(src._element);
+				_next = std::move(src._next);
+				_prev = std::move(src._prev);
+				_isUsed = std::move(src._isUsed);
 				
 				src._next = nullptr;
 				src._prev = nullptr;
@@ -145,9 +172,9 @@ public:
 		, _tail(std::move(src._tail))
 		, _freeItemsHead(std::move(src._freeItemsHead))
 		, _freeItemsTail(std::move(src._freeItemsTail))
-		, _size(src._size)
-		, _capacity(src._capacity)
-		, _growBy(src._growBy)
+		, _size(std::move(src._size))
+		, _capacity(std::move(src._capacity))
+		, _growBy(std::move(src._growBy))
 	{
 		src._head = nullptr;
 		src._tail = nullptr;
@@ -254,7 +281,7 @@ private:
 			}
 
 			// Create the first free element and setup all the pointers and the sizes
-			_freeItemsHead = new ListItem();
+			_freeItemsHead = new ListItem(DefaultValue());
 			_freeItemsTail = _freeItemsHead;
 
 			_head = nullptr;
@@ -270,7 +297,7 @@ private:
 		while (amount > 0)
 		{
 			// Create a new item
-			ListItem* newItem = new ListItem();
+			ListItem* newItem = new ListItem(DefaultValue());
 
 			// Set the previous item of the new item as the current tail of the list
 			newItem->_prev = _freeItemsTail;
@@ -362,6 +389,20 @@ private:
 
 		// Decrement the size
 		_size--;
+	}
+
+	/** Utility method used by some method which are non-const */
+	ReferenceType DefaultValue()
+	{
+		static ValueType s_defaultValue = ListElementDefaultValue<ValueType>::Value();
+		return s_defaultValue;
+	}
+
+	/** Utility method used by some method which are const */
+	ConstReferenceType DefaultValue() const
+	{
+		static ValueType s_defaultValue = ListElementDefaultValue<ValueType>::Value();
+		return s_defaultValue;
 	}
 
 public:
@@ -671,6 +712,11 @@ public:
 			delete currentItem;
 			currentItem = nextItem;
 		}
+
+		// If the tail is nullptr then we have cleared all the list
+		// se set _freeItemsHead to nullptr too
+		if(_freeItemsTail == nullptr)
+			_freeItemsHead = nullptr;
 		
 		// Set the size to 0 to mark the list as empty
 		_size = 0;
@@ -709,16 +755,49 @@ public:
 	}
 
 	/**
-	* This method searches for an element inside the list using a given comparator to see
-	* if an element is the one the user is looking for.
-	* Is the element isn't found the given alternative is returned.
+	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.
+	* Is the element isn't found -1 is returned.
 	* comparator: function object that must implement a member function compliant to the below specifications
-	* alternative: value that is returned if the element which is being searched isn't found
 	*
 	* Comparator member function signature specifications:
 	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
 	*/
-	template<typename Comparator> ValueType Find(Comparator comparator, ConstReferenceType alternative = Default)
+	template<typename Comparator> int Find(Comparator comparator) const
+	{
+		int index = 0;
+
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure)
+		while (item != nullptr && item->_isUsed && comparator(item->_element) == false)
+		{
+			// Increment the index
+			index++;
+
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// If the item is valid and it used then we have found the element we are looking for
+		// so return the index
+		if (item != nullptr && item->_isUsed)
+			return index;
+
+		// The element wasn't found
+		return -1;
+	}
+
+	/**
+	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.
+	* Is the element isn't found the default value for the list element is returned and found is set to false.
+	* comparator: function object that must implement a member function compliant to the below specifications
+	* found: if the element the user is looking for in found this gets set to true, false otherwise
+	*
+	* Comparator member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Comparator> ReferenceType FindElement(Comparator comparator, bool& found)
 	{
 		ListItem* item = _head;
 
@@ -729,14 +808,113 @@ public:
 			// Call the comparator function object and if it returns true
 			// then the element is the one the user is looking for
 			if (comparator(item->_element))
+			{
+				found = true;
 				return item->_element;
+			}
+
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// The element wasn't found so set found to false and return the list's element default value
+		found = false;
+		return DefaultValue();
+	}
+
+	/**
+	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.
+	* Is the element isn't found the default value for this list element is returned.
+	* comparator: function object that must implement a member function compliant to the below specifications
+	* found: if the element the user is looking for in found this gets set to true, false otherwise
+	*
+	* Comparator member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Comparator> ConstReferenceType FindElement(Comparator comparator, bool& found) const
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_isUsed)
+		{
+			// Call the comparator function object and if it returns true
+			// then the element is the one the user is looking for
+			if (comparator(item->_element))
+			{
+				found = true;
+				return item->_element;
+			}
+
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// The element wasn't found so return the default
+		found = false;
+		return DefaultValue();
+	}
+
+	/**
+	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.
+	* Is the element isn't found the given alternative is returned and found is set to false.
+	* comparator: function object that must implement a member function compliant to the below specifications
+	* found: if the element the user is looking for in found this gets set to true, false otherwise
+	* alternative: value that is returned if the element which is being searched isn't found
+	*
+	* Comparator member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Comparator> ConstReferenceType FindElement(Comparator comparator, bool& found, ConstReferenceType alternative) const
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_isUsed)
+		{
+			// Call the comparator function object and if it returns true
+			// then the element is the one the user is looking for
+			if (comparator(item->_element))
+			{
+				found = true;
+				return item->_element;
+			}
 
 			// Move to the next item
 			item = item->_next;
 		}
 		
 		// The element wasn't found so return the default
+		found = false;
 		return alternative;
+	}
+
+	/**
+	* This method loops through all the elements inside the list and excecutes the given function passing the element
+	* function: function object that is excecuted giving each element of the list, one a the time.
+	*			Must implement a member function compliant to the below specifications.
+	*			If the function object returns false, then the loop stops.
+	*
+	* Function member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Function> void ForEach(Function function)
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_isUsed)
+		{
+			// Call the function object and if it returns false then stop the loop
+			if (function(item->_element) == false)
+				return;
+
+			// Move to the next item
+			item = item->_next;
+		}
 	}
 
 	/** Returns the number of elements inside the list */

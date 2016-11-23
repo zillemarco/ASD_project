@@ -1,24 +1,64 @@
 #pragma once
 
 #include "List.h"
+#include "Edge.h"
+#include "Node.h"
 
 #include <string>
 
-// Forward declaration of used types
-class Edge;
-class Node;
+/**
+* Element destructor used by the list of edges of Graph.
+* Deletes the edge and sets it to nullptr
+*/
+struct EdgeListDestructor
+{
+	inline void operator()(Edge*& edge)
+	{
+		// Make sure the edge is valid and then destroy it
+		if (edge != nullptr)
+		{
+			delete edge;
+			edge = nullptr;
+		}
+	}
+};
 
-struct EdgeDestructor;
-struct NodeDestructor;
+/**
+* Element destructor used by the list of nodes of Graph.
+* Deletes the node and sets it to nullptr
+*/
+struct NodeListDestructor
+{
+	inline void operator()(Node*& node)
+	{
+		// Make sure the node is valid and then destroy it
+		if (node != nullptr)
+		{
+			delete node;
+			node = nullptr;
+		}
+	}
+};
 
 class Graph
 {
-	typedef List<Edge*, nullptr, EdgeDestructor> EdgeList;
-	typedef List<Node*, nullptr, NodeDestructor> NodeList;
+	typedef List<Edge*, EdgeListDestructor> EdgeList;
+	typedef List<Node*, NodeListDestructor> NodeList;
+
+public:
+	enum GraphType
+	{
+		GT_Simple,
+		GT_Directed,
+		GT_NotValid
+	};
 
 public:
 	/** Default constructor */
 	Graph();
+
+	/** Constructor for basic initialization */
+	Graph(const std::string& name, GraphType type);
 	
 	/** Copy constructor */
 	Graph(const Graph& src);
@@ -41,6 +81,18 @@ private:
 	void Copy(const Graph& src);
 
 public:
+	/** Sets the type of this graph as the one given */
+	Graph& SetGraphType(GraphType type) { _graphType = type; return *this; }
+
+	/** Returns the type of this graph */
+	inline GraphType GetGraphType() const { return _graphType; }
+
+	/** Sets the name of this graph to the one given */
+	Graph& SetName(const std::string& name) { _name = name; return *this; }
+
+	/** Returns the name of this graph */
+	inline const std::string& GetName() const { return _name; }
+
 	/**
 	* Creates a new edge with the given nodes as starting and ending nodes and adds it
 	* to the list of edges of this grpah. The given nodes must be valid (non-nullptr).
@@ -81,6 +133,12 @@ public:
 	const NodeList& GetNodes() const { return _nodes; }
 	
 private:
+	/** The type of this graph */
+	GraphType _graphType;
+
+	/** The name of this graph */
+	std::string _name;
+
 	/** List of all the edges of this graph */
 	EdgeList _edges;
 

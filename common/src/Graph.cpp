@@ -1,40 +1,4 @@
-#include "Edge.h"
-#include "Node.h"
 #include "Graph.h"
-
-/**
-* Element destructor used by the list of edges of Graph.
-* Deletes the edge and sets it to nullptr
-*/
-struct EdgeDestructor
-{
-	inline void operator()(Edge*& edge)
-	{
-		// Make sure the edge is valid and then destroy it
-		if (edge != nullptr)
-		{
-			delete edge;
-			edge = nullptr;
-		}
-	}
-};
-
-/**
-* Element destructor used by the list of nodes of Graph.
-* Deletes the node and sets it to nullptr
-*/
-struct NodeDestructor
-{
-	inline void operator()(Node*& node)
-	{
-		// Make sure the node is valid and then destroy it
-		if (node != nullptr)
-		{
-			delete node;
-			node = nullptr;
-		}
-	}
-};
 
 /**
 * Comparator used by Graph::AddEdge to check if an edge with the
@@ -59,6 +23,14 @@ struct EdgeComparator
 
 /** Default constructor */
 Graph::Graph()
+	: _name("")
+	, _graphType(GT_NotValid)
+{ }
+
+/** Constructor for basic initialization */
+Graph::Graph(const std::string& name, GraphType type)
+	: _name(name)
+	, _graphType(type)
 { }
 
 /** Copy constructor */
@@ -69,18 +41,19 @@ Graph::Graph(const Graph& src)
 
 /** Move constructor */
 Graph::Graph(Graph&& src)
-	: _edges(src._edges)
-	, _nodes(src._nodes)
-{
-	src._edges.Clear();
-	src._nodes.Clear();
-}
+	: _edges(std::move(src._edges))
+	, _nodes(std::move(src._nodes))
+	, _name(std::move(src._name))
+	, _graphType(std::move(src._graphType))
+{ }
 
 /** Destructor */
 Graph::~Graph()
 {
-	_edges.Clear();
-	_nodes.Clear();
+	_edges.Clear(0, true);
+	_nodes.Clear(0, true);
+	_name = "";
+	_graphType = GT_NotValid;
 }
 
 /** Assign operator */
@@ -96,10 +69,15 @@ Graph& Graph::operator=(Graph&& src)
 {
 	if (this != &src)
 	{
-		Copy(src);
+		_edges.Clear(0, true);
+		_nodes.Clear(0, true);
+		_name = "";
+		_graphType = GT_NotValid;
 
-		src._edges.Clear();
-		src._nodes.Clear();
+		_edges = std::move(src._edges);
+		_nodes = std::move(src._nodes);
+		_name = std::move(src._name);
+		_graphType = std::move(src._graphType);
 	}
 	return *this;
 }
@@ -109,6 +87,8 @@ void Graph::Copy(const Graph& src)
 {
 	_edges = src._edges;
 	_nodes = src._nodes;
+	_name = src._name;
+	_graphType = src._graphType;
 }
 
 /**
@@ -129,7 +109,7 @@ Edge* Graph::AddEdge(Node* startNode, Node* endNode)
 		return nullptr;
 	}
 
-	if (_edges.Find(EdgeComparator(startNode, endNode)) != nullptr)
+	if (_edges.Find(EdgeComparator(startNode, endNode)) != -1)
 	{
 		std::cerr << "Graph error [AddEdge]: an edge with the given start and end nodes already exists" << std::endl;
 		return nullptr;
