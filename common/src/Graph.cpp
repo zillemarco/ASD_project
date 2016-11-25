@@ -13,13 +13,31 @@ struct EdgeComparator
 
 	inline bool operator()(const Edge* edge)
 	{
-		return edge->GetStartNode() == _startNode && edge->GetEndNode() == _endNode;
+		if(edge != nullptr)
+			return edge->GetStartNode() == _startNode && edge->GetEndNode() == _endNode;
+		return false;
 	}
 
 	const Node* _startNode;
 	const Node* _endNode;
 };
 
+/** Comparator used by Graph::GetNode to get a node from a given name */
+struct NodeComparator
+{
+	NodeComparator(const std::string& name)
+		: _name(name)
+	{ }
+
+	inline bool operator()(const Node* node)
+	{
+		if(node != nullptr)
+			return node->GetName() == _name;
+		return false;
+	}
+
+	std::string _name;
+};
 
 /** Default constructor */
 Graph::Graph()
@@ -127,6 +145,62 @@ Edge* Graph::AddEdge(Node* startNode, Node* endNode)
 }
 
 /**
+* Creates a new edge with the given nodes names as starting and ending nodes and adds it
+* to the list of edges of this grpah. The given nodes must be valid (non-empty).
+* If the nodes with the given names don't exist they're added automatically.
+* This function also adds the newly created edge to the list of edges of the given nodes.
+* Returns a pointer to the newly created edge or nullptr if errors occurs.
+* Possible errors are:
+*  - one or both the nodes names are not valid
+*  - an edge with startNode as starting node and endNode as ending node already exists
+* Derived classes that override this method must ensure that the previous errors are checked
+*/
+Edge* Graph::AddEdge(const std::string& startNodeName, const std::string& endNodeName)
+{
+	if (startNodeName.empty())
+	{
+		std::cerr << "Graph error [AddEdge]: the start node name is not valid" << std::endl;
+		return nullptr;
+	}
+
+	if (endNodeName.empty())
+	{
+		std::cerr << "Graph error [AddEdge]: the end node name is not valid" << std::endl;
+		return nullptr;
+	}
+
+	// Searche the nodes inside the ones already present
+	Node* startNode = GetNode(startNodeName);
+	Node* endNode = GetNode(endNodeName);
+
+	// If the start node wasn't found we add it and check if there are errors
+	if (startNode == nullptr)
+	{
+		startNode = AddNode(startNodeName);
+		
+		if(startNode == nullptr)
+		{
+			std::cerr << "Graph error [AddEdge]: unable to add the starting node named " << startNodeName << std::endl;
+			return nullptr;
+		}
+	}
+
+	// If the end node wasn't found we add it and check if there are errors
+	if (endNode == nullptr)
+	{
+		endNode = AddNode(endNodeName);
+
+		if (endNode == nullptr)
+		{
+			std::cerr << "Graph error [AddEdge]: unable to add the ending node named " << startNodeName << std::endl;
+			return nullptr;
+		}
+	}
+
+	return AddEdge(startNode, endNode);
+}
+
+/**
 * Gets the edge at the given index from inside the list of edges of this graph
 * If the given index is not valid returns nullptr
 */
@@ -139,8 +213,8 @@ Edge* Graph::GetEdge(int index)
 }
 
 /**
-* Creates a new node with the given name
-* Returns a pointer to the newly created node or nullptr if errors occurs
+* Creates a new node with the given name or returns an existing one if it already exists a node with the given name.
+* Returns nullptr if errors occurs.
 * Possible errors are:
 *  - the name is empty
 * Derived classes that override this method must ensure that the previous errors are checked
@@ -153,11 +227,20 @@ Node* Graph::AddNode(const std::string& name)
 		return nullptr;
 	}
 
-	// Create the new node and add it to the list of nodes of the graph
-	Node* node = new Node(name);
-	_nodes.Add(node);
+	// Try to find the node
+	Node* node = GetNode(name);
 
-	return node;
+	// If the node exists return it
+	if (node != nullptr)
+		return node;
+	else
+	{
+		// Otherwise create the new node, add it to the list of nodes of the graph and return it
+		node = new Node(name);
+		_nodes.Add(node);
+
+		return node;
+	}
 }
 
 /**
@@ -170,4 +253,11 @@ Node* Graph::GetNode(int index)
 	if (index >= 0 && index < _nodes.GetSize())
 		return _nodes.GetAt(index);
 	return nullptr;
+}
+
+/** Gets the node that has the given name. If the node isn't found returns nullptr */
+Node* Graph::GetNode(const std::string& nodeName)
+{
+	bool found = false;
+	return _nodes.FindElement(NodeComparator(nodeName), found);
 }

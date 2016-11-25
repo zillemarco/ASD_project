@@ -25,54 +25,35 @@ class DotParser
 		TOK_Equal,
 		TOK_SimpleEdgeSymbol,
 		TOK_DirectedEdgeSymbol,
+		TOK_Coma,
 		TOK_NotValid
 	};
 
 public:
 	/** Default constructor */
-	DotParser();
+	DotParser() { }
 	
-	/** Copy constructor */
-	DotParser(const DotParser& src);
-
-	/** Move constructor */
-	DotParser(DotParser&& src);
-
 	/** Destructor */
-	~DotParser();
-
+	~DotParser() { }
+		
 public:
-	/** Assign operator */
-	DotParser& operator=(const DotParser& src);
-
-	/** Move operator */
-	DotParser& operator=(DotParser&& src);
-	
-public:
-	Graph Parse(const std::string& dotDefinition);
+	static bool Parse(Graph& resultGraph, const std::string& dotDefinition);
 
 private:
-	bool ParseID(std::string& id, bool& enclosedWithDoubleQuotes, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
-	bool ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static bool ParseID(std::string& id, bool& enclosedWithDoubleQuotes, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
+	static bool ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	bool MoveToFirstOccurenceOfChar(char c, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static bool MoveToFirstOccurenceOfChar(char c, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	void RemoveSpaces(int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static void RemoveSpaces(int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	Token ParseToken(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static Token ParseToken(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	void ReadUntilSpaces(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static void ReadUntilSpaces(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	bool ReadComment(std::string& result, bool singleLine, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static bool ReadComment(std::string& result, bool singleLine, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	bool ParseAttributesList(GraphElement* element, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
+	static bool ParseAttributesList(GraphElement* singleElement, List<GraphElement*>* elements, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	bool ParseEdgeList(Graph& graph, const std::string& firstNodeId, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength);
-
-private:
-	/** The line where the parser is currently at during parsing. Useful for error logs */
-	int _lineNumber;
-
-	/** The character of the line where the parser is currently at during parsing. Useful for error logs */
-	int _columnNumber;
+	static bool ParseEdgeList(Graph& graph, const std::string& firstNodeId, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 };

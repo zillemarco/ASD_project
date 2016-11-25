@@ -81,4 +81,5 @@ private:
 	AttributeList _attributes;
 };
 
+template<> struct ListElementDefaultValue<GraphElement*> { static GraphElement* Value() { return nullptr; } };
 template<> struct ListElementDefaultValue<GraphElement::Attribute> { static GraphElement::Attribute Value() { return GraphElement::Attribute(); } };

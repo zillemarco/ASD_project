@@ -60,7 +60,7 @@ private:
 	
 public:
 	/** Returns the name of this node */
-	const std::string GetName() const { return GetAttribute("name", "no_name"); }
+	const std::string GetName() const { return _name; }
 
 	/** Returns the list of edges connected to this node */
 	const List<Edge*>& GetEdges() const { return _edges; }
@@ -87,6 +87,9 @@ public:
 	int GetEdgeIndex(Edge* edge) const;
 
 private:
+	/** Name of the node */
+	std::string _name;
+
 	/** List of edges connected to this node */
 	List<Edge*> _edges;
 };

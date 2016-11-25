@@ -897,7 +897,7 @@ public:
 	*			Must implement a member function compliant to the below specifications.
 	*			If the function object returns false, then the loop stops.
 	*
-	* Function member function signature specifications:
+	* Function object member function signature specifications:
 	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
 	*/
 	template<typename Function> void ForEach(Function function)

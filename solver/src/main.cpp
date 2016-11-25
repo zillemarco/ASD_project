@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
 		dotFileContent = ReadFile(std::cin);
 	}
 
-	DotParser parser;
-	Graph g = parser.Parse(dotFileContent);
+	Graph result;
+	bool b = DotParser::Parse(result, dotFileContent);
 
 	return 0;
 }

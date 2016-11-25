@@ -106,6 +106,19 @@ public:
 	virtual Edge* AddEdge(Node* startNode, Node* endNode);
 
 	/**
+	* Creates a new edge with the given nodes names as starting and ending nodes and adds it
+	* to the list of edges of this grpah. The given nodes must be valid (non-empty).
+	* If the nodes with the given names don't exist they're added automatically.
+	* This function also adds the newly created edge to the list of edges of the given nodes.
+	* Returns a pointer to the newly created edge or nullptr if errors occurs.
+	* Possible errors are:
+	*  - one or both the nodes names are not valid
+	*  - an edge with startNode as starting node and endNode as ending node already exists
+	* Derived classes that override this method must ensure that the previous errors are checked
+	*/
+	virtual Edge* AddEdge(const std::string& startNodeName, const std::string& endNodeName);
+
+	/**
 	* Gets the edge at the given index from inside the list of edges of this graph
 	* If the given index is not valid returns nullptr
 	*/
@@ -115,8 +128,8 @@ public:
 	const EdgeList& GetEdges() const { return _edges; }
 	
 	/**
-	* Creates a new node with the given name
-	* Returns a pointer to the newly created node or nullptr if errors occurs
+	* Creates a new node with the given name or returns an existing one if it already exists a node with the given name.
+	* Returns nullptr if errors occurs.
 	* Possible errors are:
 	*  - the name is empty
 	* Derived classes that override this method must ensure that the previous errors are checked
@@ -128,6 +141,9 @@ public:
 	* If the given index is not valid returns nullptr
 	*/
 	Node* GetNode(int index);
+
+	/** Gets the node that has the given name. If the node isn't found returns nullptr */
+	Node* GetNode(const std::string& nodeName);
 
 	/** Returns the list of edges of this graph */
 	const NodeList& GetNodes() const { return _nodes; }

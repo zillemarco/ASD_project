@@ -9,20 +9,21 @@ Node::Node()
 /** Constructor with basic initialization */
 Node::Node(const std::string& name)
 	: GraphElement()
-{
-	SetAttribute("name", name);
-}
+	, _name(name)
+{ }
 
 /** Copy constructor */
 Node::Node(const Node& src)
 	: GraphElement(src)
 	, _edges(src._edges)
+	, _name(src._name)
 { }
 
 /** Move constructor */
 Node::Node(Node&& src)
 	: GraphElement(src)
 	, _edges(std::move(src._edges))
+	, _name(std::move(src._name))
 { }
 
 /** Destructor */
@@ -50,6 +51,7 @@ Node& Node::operator=(Node&& src)
 	{
 		_edges.Clear();
 		_edges = std::move(src._edges);
+		_name = std::move(src._name);
 	}
 	return *this;
 }
