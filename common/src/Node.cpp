@@ -7,9 +7,10 @@ Node::Node()
 { }
 
 /** Constructor with basic initialization */
-Node::Node(const std::string& name)
+Node::Node(const std::string& name, bool encloseNameInDoubleQuotes)
 	: GraphElement()
 	, _name(name)
+	, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
 { }
 
 /** Copy constructor */
@@ -17,6 +18,7 @@ Node::Node(const Node& src)
 	: GraphElement(src)
 	, _edges(src._edges)
 	, _name(src._name)
+	, _encloseNameInDoubleQuotes(src._encloseNameInDoubleQuotes)
 { }
 
 /** Move constructor */
@@ -24,6 +26,7 @@ Node::Node(Node&& src)
 	: GraphElement(src)
 	, _edges(std::move(src._edges))
 	, _name(std::move(src._name))
+	, _encloseNameInDoubleQuotes(std::move(src._encloseNameInDoubleQuotes))
 { }
 
 /** Destructor */
@@ -52,6 +55,7 @@ Node& Node::operator=(Node&& src)
 		_edges.Clear();
 		_edges = std::move(src._edges);
 		_name = std::move(src._name);
+		_encloseNameInDoubleQuotes = std::move(src._encloseNameInDoubleQuotes);
 	}
 	return *this;
 }
@@ -60,6 +64,8 @@ Node& Node::operator=(Node&& src)
 void Node::Copy(const Node& src)
 {
 	_edges = src._edges;
+	_name = src._name;
+	_encloseNameInDoubleQuotes = src._encloseNameInDoubleQuotes;
 }
 
 /** Adds the given edge to the list of edges connected to this node */

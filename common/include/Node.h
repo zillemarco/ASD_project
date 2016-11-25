@@ -23,7 +23,7 @@ protected:
 	Node();
 
 	/** Constructor with basic initialization */
-	Node(const std::string& name);
+	Node(const std::string& name, bool encloseNameIdDoubleQuotes);
 
 public:
 	/** Copy constructor */
@@ -62,8 +62,14 @@ public:
 	/** Returns the name of this node */
 	const std::string GetName() const { return _name; }
 
+	/** Returns true if a write needs to enclose the name of this node between double quotes */
+	bool EncloseNameInDoubleQuotes() const { return _encloseNameInDoubleQuotes; }
+
 	/** Returns the list of edges connected to this node */
 	const List<Edge*>& GetEdges() const { return _edges; }
+
+	/** Returns true if the node it connected with at least one edge */
+	bool HasEdges() const { return _edges.GetSize() > 0; }
 
 	/**
 	* Returns true or false depending if this node is the start node of the given edge
@@ -89,6 +95,9 @@ public:
 private:
 	/** Name of the node */
 	std::string _name;
+
+	/** If true a write needs to enclose the name of this node between double quotes */
+	bool _encloseNameInDoubleQuotes;
 
 	/** List of edges connected to this node */
 	List<Edge*> _edges;

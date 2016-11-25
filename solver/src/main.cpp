@@ -1,5 +1,6 @@
 #include "Graph.h"
 #include "DotParser.h"
+#include "DotWriter.h"
 
 #include <fstream>
 #include <sstream>
@@ -33,7 +34,8 @@ int main(int argc, char *argv[])
 	}
 
 	Graph result;
-	bool b = DotParser::Parse(result, dotFileContent);
+	if (DotParser::Parse(result, dotFileContent))
+		DotWriter::Write(result, std::cout);
 
 	return 0;
 }

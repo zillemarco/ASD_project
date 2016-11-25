@@ -58,7 +58,7 @@ public:
 	Graph();
 
 	/** Constructor for basic initialization */
-	Graph(const std::string& name, GraphType type);
+	Graph(const std::string& name, bool encloseNameInDoubleQuotes, GraphType type);
 	
 	/** Copy constructor */
 	Graph(const Graph& src);
@@ -88,10 +88,13 @@ public:
 	inline GraphType GetGraphType() const { return _graphType; }
 
 	/** Sets the name of this graph to the one given */
-	Graph& SetName(const std::string& name) { _name = name; return *this; }
+	Graph& SetName(const std::string& name, bool encloseNameInDoubleQuotes) { _name = name; _encloseNameInDoubleQuotes = encloseNameInDoubleQuotes; return *this; }
 
 	/** Returns the name of this graph */
 	inline const std::string& GetName() const { return _name; }
+
+	/** Returns true if a write needs to enclose the name of this graph between double quotes */
+	bool EncloseNameInDoubleQuotes() const { return _encloseNameInDoubleQuotes; }
 
 	/**
 	* Creates a new edge with the given nodes as starting and ending nodes and adds it
@@ -116,7 +119,7 @@ public:
 	*  - an edge with startNode as starting node and endNode as ending node already exists
 	* Derived classes that override this method must ensure that the previous errors are checked
 	*/
-	virtual Edge* AddEdge(const std::string& startNodeName, const std::string& endNodeName);
+	virtual Edge* AddEdge(const std::string& startNodeName, const std::string& endNodeName, bool encloseStartNodeNameInDoubleQuotes, bool encloseEndNodeNameInDoubleQuotes);
 
 	/**
 	* Gets the edge at the given index from inside the list of edges of this graph
@@ -134,7 +137,7 @@ public:
 	*  - the name is empty
 	* Derived classes that override this method must ensure that the previous errors are checked
 	*/
-	virtual Node* AddNode(const std::string& name);
+	virtual Node* AddNode(const std::string& name, bool encloseNodeNameInDoubleQuotes);
 
 	/**
 	* Gets the node at the given index from inside the list of nodes of this graph
@@ -154,6 +157,9 @@ private:
 
 	/** The name of this graph */
 	std::string _name;
+
+	/** If true a write needs to enclose the name of this graph between double quotes */
+	bool _encloseNameInDoubleQuotes;
 
 	/** List of all the edges of this graph */
 	EdgeList _edges;

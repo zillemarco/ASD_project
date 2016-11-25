@@ -14,9 +14,11 @@ public:
 	struct Attribute
 	{
 		/** Default constructor */
-		Attribute(const std::string& name = "", const std::string& value = "")
+		Attribute(const std::string& name = "", const std::string& value = "", bool encloseNameInDoubleQuotes = false, bool encloseValueInDoubleQuotes = false)
 			: _name(name)
 			, _value(value)
+			, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
+			, _encloseValueInDoubleQuotes(encloseValueInDoubleQuotes)
 		{ }
 
 		/** Name of the attribute */
@@ -24,6 +26,12 @@ public:
 
 		/** Value of the attribute */
 		std::string _value;
+
+		/** If true a write needs to enclose the name of this attribute between double quotes */
+		bool _encloseNameInDoubleQuotes;
+
+		/** If true a write needs to enclose the value of this attribute between double quotes */
+		bool _encloseValueInDoubleQuotes;
 	};
 
 	typedef List<Attribute> AttributeList;
@@ -64,17 +72,24 @@ public:
 	* If the attribute with the given name doesn't exist it is added.
 	* name: name of the attribute which the user wants to set
 	* value: value of the attribute which the user wants to set
+	* encloseNameInDoubleQuotes: if true a write needs to enclose the name of this attribute between double quotes
+	* encloseValueInDoubleQuotes: if true a write needs to enclose the value of this attribute between double quotes
 	*/
-	GraphElement& SetAttribute(const std::string& name, const std::string& value);
+	GraphElement& SetAttribute(const std::string& name, const std::string& value, bool encloseNameInDoubleQuotes, bool encloseValueInDoubleQuotes);
 
 	/** Returns true if this graph element has an attribute with the name as the one given */
 	bool HasAttribute(const std::string& attributeName) const;
+
+	/** Returns true if this graph element has some attributes */
+	bool HasAttributes() const { return _attributes.GetSize() > 0; }
 	
 	/**
 	* Searches for an attribute with the given name and returns its value
 	* If the attribute isn't found, returns the given alternative
 	*/
 	const std::string& GetAttribute(const std::string& attributeName, const std::string& alternative) const;
+
+	const AttributeList& GetAttributes() const { return _attributes; }
 	
 private:
 	/** List of all the attributes of the graph element */

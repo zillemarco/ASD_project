@@ -47,7 +47,7 @@ private:
 
 	static void RemoveSpaces(int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	static Token ParseToken(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
+	static Token ParseToken(std::string& result, bool& resultEnclosedInDoubleQuotes, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
 	static void ReadUntilSpaces(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
@@ -55,5 +55,5 @@ private:
 
 	static bool ParseAttributesList(GraphElement* singleElement, List<GraphElement*>* elements, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 
-	static bool ParseEdgeList(Graph& graph, const std::string& firstNodeId, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
+	static bool ParseEdgeList(Graph& graph, const std::string& firstNodeId, bool firstNodeIdBetweenDoubleQuotes, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber);
 };

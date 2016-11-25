@@ -898,10 +898,11 @@ public:
 	*			If the function object returns false, then the loop stops.
 	*
 	* Function object member function signature specifications:
-	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element, int index, bool lastElement);
 	*/
 	template<typename Function> void ForEach(Function function)
 	{
+		int index = 0;
 		ListItem* item = _head;
 
 		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
@@ -909,11 +910,40 @@ public:
 		while (item != nullptr && item->_isUsed)
 		{
 			// Call the function object and if it returns false then stop the loop
-			if (function(item->_element) == false)
+			if (function(item->_element, index, index == (_size - 1)) == false)
 				return;
 
 			// Move to the next item
 			item = item->_next;
+			index++;
+		}
+	}
+
+	/**
+	* This method loops through all the elements inside the list and excecutes the given function passing the element
+	* function: function object that is excecuted giving each element of the list, one a the time.
+	*			Must implement a member function compliant to the below specifications.
+	*			If the function object returns false, then the loop stops.
+	*
+	* Function object member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element, int index, bool lastElement);
+	*/
+	template<typename Function> void ForEach(Function function) const
+	{
+		int index = 0;
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_isUsed)
+		{
+			// Call the function object and if it returns false then stop the loop
+			if (function(item->_element, index, index == (_size - 1)) == false)
+				return;
+
+			// Move to the next item
+			item = item->_next;
+			index++;
 		}
 	}
 

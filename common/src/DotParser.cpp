@@ -1,4 +1,3 @@
-#include "Graph.h"
 #include "DotParser.h"
 
 #include <cctype>
@@ -26,20 +25,24 @@ static bool IsDigit(int c)
 /** Utility struct to hold a function operator to be used by ParseAttributeList */
 struct AddAttribute
 {
-	AddAttribute(const std::string& attributeName, const std::string& attributeValue)
+	AddAttribute(const std::string& attributeName, const std::string& attributeValue, bool encloseNameInDoubleQuotes, bool encloseValueInDoubleQuotes)
 		: _name(attributeName)
 		, _value(attributeValue)
+		, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
+		, _encloseValueInDoubleQuotes(encloseValueInDoubleQuotes)
 	{ }
 
-	inline bool operator()(GraphElement* element)
+	inline bool operator()(GraphElement* element, int index, bool lastElement)
 	{
 		if (element != nullptr)
-			element->SetAttribute(_name, _value);
+			element->SetAttribute(_name, _value, _encloseNameInDoubleQuotes, _encloseValueInDoubleQuotes);
 		return true;
 	}
 
 	std::string _name;
 	std::string _value;
+	bool _encloseNameInDoubleQuotes;
+	bool _encloseValueInDoubleQuotes;
 };
 
 bool DotParser::Parse(Graph& resultGraph, const std::string& dotDefinition)
@@ -51,15 +54,16 @@ bool DotParser::Parse(Graph& resultGraph, const std::string& dotDefinition)
 	int lineNumber = 0;
 	int columnNumber = 0;
 	std::string tmpStr;
+	bool enclosedInDoubleQuotes = false;
 		
 	// Parse the first token. Could be strict, graph or digraph
-	Token tk = ParseToken(tmpStr, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
+	Token tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
 
 	// strict isn't supported so report a warning and parse a second token which must be graph or digraph
 	if (tk == TOK_Strict)
 	{
 		std::cerr << "WARNING: the 'strict' directive is not supported" << std::endl;
-		tk = ParseToken(tmpStr, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
+		tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
 	}
 
 	if (tk == TOK_Graph)
@@ -70,10 +74,10 @@ bool DotParser::Parse(Graph& resultGraph, const std::string& dotDefinition)
 		return false;
 
 	// We now look for a name for the graph or an open bracket
-	tk = ParseToken(tmpStr, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
+	tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
 
 	if (tk == TOK_Id)
-		resultGraph.SetName(tmpStr);
+		resultGraph.SetName(tmpStr, enclosedInDoubleQuotes);
 	// If the token wasn't an ID then it must be an open bracket otherwise we have an error
 	else if (tk != TOK_OpenBracket)
 		return false;
@@ -283,12 +287,13 @@ bool DotParser::ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& 
 {
 	Token tk = TOK_NotValid;
 	std::string tmpStr = "";
+	bool enclosedInDoubleQuotes = false;
 
 	// If an open bracket wasn't already found we check if it is present
 	// otherwise we have an error
 	if (bracketAlreadyFound == false)
 	{
-		tk = ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
+		tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
 		if (tk != TOK_OpenBracket)
 		{
@@ -301,9 +306,9 @@ bool DotParser::ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& 
 	while (parseIndex < dotDefinitionLength)
 	{
 		// Get the next token
-		tk = ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
+		tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
-		// These three tokens aren't handled to print a warning but continue parsing
+		// These three tokens aren't handled so print a warning but continue parsing
 		if (tk == TOK_Edge || tk == TOK_Node || tk == TOK_Graph)
 		{
 			if (tk == TOK_Edge)
@@ -314,7 +319,7 @@ bool DotParser::ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& 
 				std::cerr << "WARNING: the 'graph' directive is not supported [" << (lineNumber + 1) << ", " << (columnNumber + 1) << "]" << std::endl;
 
 			// Get the next token which must be an open square bracket
-			if (ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) != TOK_OpenSquareBracket)
+			if (ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) != TOK_OpenSquareBracket)
 			{
 				std::cerr << "ERROR: unexpected symbol at [" << (lineNumber + 1) << ", " << (columnNumber + 1) << "]. Expected a '['" << std::endl;
 				return false;
@@ -329,22 +334,23 @@ bool DotParser::ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& 
 		{
 			// Save the ID we have just read
 			std::string objectID = tmpStr;
+			bool objectIDBetweenDoubleQuotes = enclosedInDoubleQuotes;
 
 			// Parse the next token to understand if we are looking at an edge or node declaration
-			tk = ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
+			tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
 			// We've read a node declaration which has no attributes so add it to the graph
 			if (tk == TOK_Semicolon)
 			{
 				// Make sure the node is added to the graph successfully
-				if (graph.AddNode(objectID) == nullptr)
+				if (graph.AddNode(objectID, objectIDBetweenDoubleQuotes) == nullptr)
 					return false;
 			}
 			// We've read a node declaration which has some attributes so add
 			// the node to the graph and read the attributes to it
 			else if (tk == TOK_OpenSquareBracket)
 			{
-				Node* node = graph.AddNode(objectID);
+				Node* node = graph.AddNode(objectID, objectIDBetweenDoubleQuotes);
 
 				// Make sure the node is added to the graph successfully
 				if (node == nullptr)
@@ -370,14 +376,14 @@ bool DotParser::ParseStatementList(Graph& graph, bool bracketAlreadyFound, int& 
 				}
 
 				// Parse the edge list and add it to the graph
-				if (ParseEdgeList(graph, objectID, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == false)
+				if (ParseEdgeList(graph, objectID, objectIDBetweenDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == false)
 					return false;
 			}
 			// Might have found an expression like ID = ID
 			else if (tk == TOK_Equal)
 			{
 				// If the next token isn't an ID then there is an error
-				if (ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) != TOK_Id)
+				if (ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) != TOK_Id)
 				{
 					std::cerr << "ERROR: unexpected symbol at [" << (lineNumber + 1) << ", " << (columnNumber + 1) << "]. Expected a valid ID" << std::endl;
 					return false;
@@ -459,7 +465,7 @@ void DotParser::RemoveSpaces(int& parseIndex, const char*& dotDefinition, int do
 	}
 }
 
-DotParser::Token DotParser::ParseToken(std::string& result, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber)
+DotParser::Token DotParser::ParseToken(std::string& result, bool& resultEnclosedInDoubleQuotes, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber)
 {
 	RemoveSpaces(parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
@@ -471,8 +477,8 @@ DotParser::Token DotParser::ParseToken(std::string& result, int& parseIndex, con
 		const char* localDotDefinition = dotDefinition;
 
 		// First of all try to parse a valid ID
-		bool idEnclosedWithDoubleQuotes = false;
-		if (ParseID(result, idEnclosedWithDoubleQuotes, localParseIndex, localDotDefinition, dotDefinitionLength, localLineNumber, localColumnNumber))
+		resultEnclosedInDoubleQuotes = false;
+		if (ParseID(result, resultEnclosedInDoubleQuotes, localParseIndex, localDotDefinition, dotDefinitionLength, localLineNumber, localColumnNumber))
 		{
 			// Since we have found a valid ID we copy the local values of the parse
 			// index and the DOT definition buffer to the real ones
@@ -482,7 +488,7 @@ DotParser::Token DotParser::ParseToken(std::string& result, int& parseIndex, con
 			columnNumber = localColumnNumber;
 
 			// If the ID was enclosed in double quotes it is always a valid ID
-			if (idEnclosedWithDoubleQuotes)
+			if (resultEnclosedInDoubleQuotes)
 				return TOK_Id;
 			else
 			{
@@ -506,6 +512,8 @@ DotParser::Token DotParser::ParseToken(std::string& result, int& parseIndex, con
 		// If a valid ID wasn't found we check for other tokens such as semicolons, brackets, etc.
 		else
 		{
+			resultEnclosedInDoubleQuotes = false;
+
 			// Found an open bracked
 			if (*dotDefinition == '{')
 			{
@@ -789,15 +797,20 @@ bool DotParser::ReadComment(std::string& result, bool singleLine, int& parseInde
 bool DotParser::ParseAttributesList(GraphElement* singleElement, List<GraphElement*>* elements, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber)
 {
 	Token tk = TOK_NotValid;
+	
 	std::string tmpStr = "";
 	std::string attributeName = "";
 	std::string attributeValue = "";
+	bool betweenQuotes = false;
+	bool attributeNameDoubleQuotes = false;
+	bool attributeValueDoubleQuotes = false;
+
 	bool foundAnAttribute = false;
 
 	while (parseIndex < dotDefinitionLength)
 	{
 		// The first token must be an ID, a closed square bracket, a coma or a semicolon
-		tk = ParseToken(attributeName, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
+		tk = ParseToken(attributeName, attributeNameDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
 		// If we have found a closed square bracket the attributes list is finished
 		if (tk == TOK_ClosedSquareBraket)
@@ -818,16 +831,16 @@ bool DotParser::ParseAttributesList(GraphElement* singleElement, List<GraphEleme
 		else if (tk == TOK_Id)
 		{
 			// Now there must be an equal
-			if (ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == TOK_Equal)
+			if (ParseToken(tmpStr, betweenQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == TOK_Equal)
 			{
 				// Now there must be another ID which is the value of the attribute
-				if (ParseToken(attributeValue, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == TOK_Id)
+				if (ParseToken(attributeValue, attributeValueDoubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == TOK_Id)
 				{
 					// We have all the components to add the attribute
 					if (elements != nullptr)
-						elements->ForEach(AddAttribute(attributeName, attributeValue));
+						elements->ForEach(AddAttribute(attributeName, attributeValue, attributeNameDoubleQuotes, attributeValueDoubleQuotes));
 					else if(singleElement != nullptr)
-						singleElement->SetAttribute(attributeName, attributeValue);
+						singleElement->SetAttribute(attributeName, attributeValue, attributeNameDoubleQuotes, attributeValueDoubleQuotes);
 
 					if (foundAnAttribute == false)
 						foundAnAttribute = true;
@@ -849,12 +862,15 @@ bool DotParser::ParseAttributesList(GraphElement* singleElement, List<GraphEleme
 	return false;
 }
 
-bool DotParser::ParseEdgeList(Graph& graph, const std::string& firstNodeId, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber)
+bool DotParser::ParseEdgeList(Graph& graph, const std::string& firstNodeId, bool firstNodeIdBetweenDoubleQuotes, int& parseIndex, const char*& dotDefinition, int dotDefinitionLength, int& lineNumber, int& columnNumber)
 {
 	Token tk = TOK_NotValid;
 	std::string tmpStr = "";
 	std::string nodeId_1 = firstNodeId;
 	std::string nodeId_2 = "";
+	bool betweenQuotes = false;
+	bool nodeId_1_doubleQuotes = firstNodeIdBetweenDoubleQuotes;
+	bool nodeId_2_doubleQuotes = false;
 
 	List<GraphElement*> addedEdges;
 
@@ -862,12 +878,12 @@ bool DotParser::ParseEdgeList(Graph& graph, const std::string& firstNodeId, int&
 	if (parseIndex < dotDefinitionLength)
 	{
 		// The first token must be an ID
-		tk = ParseToken(nodeId_2, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
+		tk = ParseToken(nodeId_2, nodeId_2_doubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
 		if (tk == TOK_Id)
 		{
 			// We have found a valid ID which is the second node ID so we can add the edge
-			Edge* edge = graph.AddEdge(nodeId_1, nodeId_2);
+			Edge* edge = graph.AddEdge(nodeId_1, nodeId_2, nodeId_1_doubleQuotes, nodeId_2_doubleQuotes);
 
 			// If the edge has not been created there is an error
 			if (edge == nullptr)
@@ -888,9 +904,11 @@ bool DotParser::ParseEdgeList(Graph& graph, const std::string& firstNodeId, int&
 		// Make the current second node of the edge the first of the next edge
 		nodeId_1 = nodeId_2;
 		nodeId_2 = "";
+		nodeId_1_doubleQuotes = nodeId_2_doubleQuotes;
+		nodeId_2_doubleQuotes = false;
 
 		// The first token must be a '--', a '->', a coma, a semicolon or an open square bracked
-		tk = ParseToken(tmpStr, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
+		tk = ParseToken(tmpStr, betweenQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber);
 
 		// If we have found a semicolon the edge list is finished
 		if (tk == TOK_Semicolon)
@@ -910,10 +928,10 @@ bool DotParser::ParseEdgeList(Graph& graph, const std::string& firstNodeId, int&
 			}
 
 			// Now we must find a second valid ID
-			if (ParseToken(nodeId_2, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == TOK_Id)
+			if (ParseToken(nodeId_2, nodeId_2_doubleQuotes, parseIndex, dotDefinition, dotDefinitionLength, lineNumber, columnNumber) == TOK_Id)
 			{
 				// We have found a valid ID which is the second node ID so we can add the edge
-				Edge* edge = graph.AddEdge(nodeId_1, nodeId_2);
+				Edge* edge = graph.AddEdge(nodeId_1, nodeId_2, nodeId_1_doubleQuotes, nodeId_2_doubleQuotes);
 
 				// If the edge has not been created there is an error
 				if (edge == nullptr)

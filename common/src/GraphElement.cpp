@@ -73,8 +73,10 @@ void GraphElement::Copy(const GraphElement& src)
 * If the attribute with the given name doesn't exist it is added.
 * name: name of the attribute which the user wants to set
 * value: value of the attribute which the user wants to set
+* encloseNameInDoubleQuotes: if true a write needs to enclose the name of this attribute between double quotes
+* encloseValueInDoubleQuotes: if true a write needs to enclose the value of this attribute between double quotes
 */
-GraphElement& GraphElement::SetAttribute(const std::string& name, const std::string& value)
+GraphElement& GraphElement::SetAttribute(const std::string& name, const std::string& value, bool encloseNameInDoubleQuotes, bool encloseValueInDoubleQuotes)
 {
 	// Find the attribute with the given name
 	bool found = false;
@@ -82,10 +84,14 @@ GraphElement& GraphElement::SetAttribute(const std::string& name, const std::str
 
 	// If the attribute was found change its value
 	if (found)
+	{
 		attribute._value = value;
+		attribute._encloseNameInDoubleQuotes = encloseNameInDoubleQuotes;
+		attribute._encloseValueInDoubleQuotes = encloseValueInDoubleQuotes;
+	}
 	// Otherwise add a new attribute to the list with the given name and value
 	else
-		_attributes.Add(Attribute(name, value));
+		_attributes.Add(Attribute(name, value, encloseNameInDoubleQuotes, encloseValueInDoubleQuotes));
 
 	return *this;
 }

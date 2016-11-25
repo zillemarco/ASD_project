@@ -42,12 +42,14 @@ struct NodeComparator
 /** Default constructor */
 Graph::Graph()
 	: _name("")
+	, _encloseNameInDoubleQuotes(false)
 	, _graphType(GT_NotValid)
 { }
 
 /** Constructor for basic initialization */
-Graph::Graph(const std::string& name, GraphType type)
+Graph::Graph(const std::string& name, bool encloseNameInDoubleQuotes, GraphType type)
 	: _name(name)
+	, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
 	, _graphType(type)
 { }
 
@@ -62,6 +64,7 @@ Graph::Graph(Graph&& src)
 	: _edges(std::move(src._edges))
 	, _nodes(std::move(src._nodes))
 	, _name(std::move(src._name))
+	, _encloseNameInDoubleQuotes(std::move(src._encloseNameInDoubleQuotes))
 	, _graphType(std::move(src._graphType))
 { }
 
@@ -95,6 +98,7 @@ Graph& Graph::operator=(Graph&& src)
 		_edges = std::move(src._edges);
 		_nodes = std::move(src._nodes);
 		_name = std::move(src._name);
+		_encloseNameInDoubleQuotes = std::move(src._encloseNameInDoubleQuotes);
 		_graphType = std::move(src._graphType);
 	}
 	return *this;
@@ -106,6 +110,7 @@ void Graph::Copy(const Graph& src)
 	_edges = src._edges;
 	_nodes = src._nodes;
 	_name = src._name;
+	_encloseNameInDoubleQuotes = src._encloseNameInDoubleQuotes;
 	_graphType = src._graphType;
 }
 
@@ -155,7 +160,7 @@ Edge* Graph::AddEdge(Node* startNode, Node* endNode)
 *  - an edge with startNode as starting node and endNode as ending node already exists
 * Derived classes that override this method must ensure that the previous errors are checked
 */
-Edge* Graph::AddEdge(const std::string& startNodeName, const std::string& endNodeName)
+Edge* Graph::AddEdge(const std::string& startNodeName, const std::string& endNodeName, bool encloseStartNodeNameInDoubleQuotes, bool encloseEndNodeNameInDoubleQuotes)
 {
 	if (startNodeName.empty())
 	{
@@ -176,7 +181,7 @@ Edge* Graph::AddEdge(const std::string& startNodeName, const std::string& endNod
 	// If the start node wasn't found we add it and check if there are errors
 	if (startNode == nullptr)
 	{
-		startNode = AddNode(startNodeName);
+		startNode = AddNode(startNodeName, encloseStartNodeNameInDoubleQuotes);
 		
 		if(startNode == nullptr)
 		{
@@ -188,7 +193,7 @@ Edge* Graph::AddEdge(const std::string& startNodeName, const std::string& endNod
 	// If the end node wasn't found we add it and check if there are errors
 	if (endNode == nullptr)
 	{
-		endNode = AddNode(endNodeName);
+		endNode = AddNode(endNodeName, encloseEndNodeNameInDoubleQuotes);
 
 		if (endNode == nullptr)
 		{
@@ -219,7 +224,7 @@ Edge* Graph::GetEdge(int index)
 *  - the name is empty
 * Derived classes that override this method must ensure that the previous errors are checked
 */
-Node* Graph::AddNode(const std::string& name)
+Node* Graph::AddNode(const std::string& name, bool encloseNodeNameInDoubleQuotes)
 {
 	if (name.empty())
 	{
@@ -236,7 +241,7 @@ Node* Graph::AddNode(const std::string& name)
 	else
 	{
 		// Otherwise create the new node, add it to the list of nodes of the graph and return it
-		node = new Node(name);
+		node = new Node(name, encloseNodeNameInDoubleQuotes);
 		_nodes.Add(node);
 
 		return node;
