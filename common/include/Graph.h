@@ -117,9 +117,8 @@ public:
 	* Possible errors are:
 	*  - one or both the nodes names are not valid
 	*  - an edge with startNode as starting node and endNode as ending node already exists
-	* Derived classes that override this method must ensure that the previous errors are checked
 	*/
-	virtual Edge* AddEdge(const std::string& startNodeName, const std::string& endNodeName, bool encloseStartNodeNameInDoubleQuotes, bool encloseEndNodeNameInDoubleQuotes);
+	Edge* AddEdge(const std::string& startNodeName, const std::string& endNodeName, bool encloseStartNodeNameInDoubleQuotes, bool encloseEndNodeNameInDoubleQuotes);
 
 	/**
 	* Gets the edge at the given index from inside the list of edges of this graph
@@ -137,7 +136,7 @@ public:
 	*  - the name is empty
 	* Derived classes that override this method must ensure that the previous errors are checked
 	*/
-	virtual Node* AddNode(const std::string& name, bool encloseNodeNameInDoubleQuotes);
+	Node* AddNode(const std::string& name, bool encloseNodeNameInDoubleQuotes);
 
 	/**
 	* Gets the node at the given index from inside the list of nodes of this graph
@@ -150,6 +149,40 @@ public:
 
 	/** Returns the list of edges of this graph */
 	const NodeList& GetNodes() const { return _nodes; }
+
+	/**
+	* Applies the Tarjan's altgorithm to return all the strongly connected components of this graph.
+	* Only works if the graph is directed.
+	* Returns false if there are errors.
+	*/
+	bool Tarjan(List<Graph>& resultGraphs) const;
+
+protected:
+	/**
+	* This method is used by AddNode when the node is not present inside the
+	* graph so there is the need to create a new one.
+	* It is meant to be overriden by a derived class to return an instance of
+	* a Node class that could be derived to store additional data.
+	* name: the name to give to the newly created node
+	* encloseNodeNameInDoubleQuotes: if true then a writer needs to enclose the name of this graph between double quotes
+	*/
+	virtual Node* CreateNode(const std::string& name, bool encloseNodeNameInDoubleQuotes)
+	{
+		return new Node(name, encloseNodeNameInDoubleQuotes);
+	}
+
+	/**
+	* This method is used by AddEdge when the edge is not present inside the
+	* graph so there is the need to create a new one.
+	* It is meant to be overriden by a derived class to return an instance of
+	* a Edge class that could be derived to store additional data.
+	* startNode: the first node of the edge
+	* endNode: the second node of the edge
+	*/
+	virtual Edge* CreateEdge(Node* startNode, Node* endNode)
+	{
+		return new Edge(startNode, endNode);
+	}
 	
 private:
 	/** The type of this graph */
@@ -158,7 +191,7 @@ private:
 	/** The name of this graph */
 	std::string _name;
 
-	/** If true a write needs to enclose the name of this graph between double quotes */
+	/** If true then a writer needs to enclose the name of this graph between double quotes */
 	bool _encloseNameInDoubleQuotes;
 
 	/** List of all the edges of this graph */

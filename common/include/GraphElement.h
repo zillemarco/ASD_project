@@ -27,10 +27,10 @@ public:
 		/** Value of the attribute */
 		std::string _value;
 
-		/** If true a write needs to enclose the name of this attribute between double quotes */
+		/** If true then a writer needs to enclose the name of this attribute between double quotes */
 		bool _encloseNameInDoubleQuotes;
 
-		/** If true a write needs to enclose the value of this attribute between double quotes */
+		/** If true then a writer needs to enclose the value of this attribute between double quotes */
 		bool _encloseValueInDoubleQuotes;
 	};
 
@@ -72,8 +72,8 @@ public:
 	* If the attribute with the given name doesn't exist it is added.
 	* name: name of the attribute which the user wants to set
 	* value: value of the attribute which the user wants to set
-	* encloseNameInDoubleQuotes: if true a write needs to enclose the name of this attribute between double quotes
-	* encloseValueInDoubleQuotes: if true a write needs to enclose the value of this attribute between double quotes
+	* encloseNameInDoubleQuotes: if true then a writer needs to enclose the name of this attribute between double quotes
+	* encloseValueInDoubleQuotes: if true then a writer needs to enclose the value of this attribute between double quotes
 	*/
 	GraphElement& SetAttribute(const std::string& name, const std::string& value, bool encloseNameInDoubleQuotes, bool encloseValueInDoubleQuotes);
 
@@ -96,5 +96,5 @@ private:
 	AttributeList _attributes;
 };
 
-template<> struct ListElementDefaultValue<GraphElement*> { static GraphElement* Value() { return nullptr; } };
-template<> struct ListElementDefaultValue<GraphElement::Attribute> { static GraphElement::Attribute Value() { return GraphElement::Attribute(); } };
+template<> struct ContainerElementDefaultValue<GraphElement*> { static GraphElement* Value() { return nullptr; } };
+template<> struct ContainerElementDefaultValue<GraphElement::Attribute> { static GraphElement::Attribute Value() { return GraphElement::Attribute(); } };

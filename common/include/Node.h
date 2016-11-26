@@ -96,11 +96,11 @@ private:
 	/** Name of the node */
 	std::string _name;
 
-	/** If true a write needs to enclose the name of this node between double quotes */
+	/** If true then a writer needs to enclose the name of this node between double quotes */
 	bool _encloseNameInDoubleQuotes;
 
 	/** List of edges connected to this node */
 	List<Edge*> _edges;
 };
 
-template<> struct ListElementDefaultValue<Node*> { static Node* Value() { return nullptr; } };
+template<> struct ContainerElementDefaultValue<Node*> { static Node* Value() { return nullptr; } };

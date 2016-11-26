@@ -79,4 +79,4 @@ private:
 	Node* _endNode;
 };
 
-template<> struct ListElementDefaultValue<Edge*> { static Edge* Value() { return nullptr; } };
+template<> struct ContainerElementDefaultValue<Edge*> { static Edge* Value() { return nullptr; } };

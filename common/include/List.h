@@ -1,43 +1,12 @@
 #pragma once
 
+#include "ContainersCommon.h"
+
 #include <iostream>
-#include <type_traits>
-
-/** Default element destructor used by List. It does nothing */
-template<typename T> struct ListDefaultElementDestructor
-{
-	typedef T& ReferenceType;
-	inline void operator()(ReferenceType element) { }
-};
-
-/**
-* Utility template to have a default value to use inside of some methods of List
-* The user have to define his own default value doing a template specialization of this struct.
-* 
-* For example, if the user defines a class A to be used by a List a possible template specialization is:
-*	template<> struct ListElementDefaultValue<A>
-*	{
-*		static A Value() { return  A(); }
-*	};
-*/
-template<typename T> struct ListElementDefaultValue
-{
-	//static_assert(false, "A default value wasn't specified for the type.");
-};
-
-/** Default value for basic types */
-template<> struct ListElementDefaultValue<int> { inline static int Value() { return 0; } };
-template<> struct ListElementDefaultValue<unsigned int> { inline static unsigned int Value() { return 0; } };
-template<> struct ListElementDefaultValue<long> { inline static long Value() { return 0; } };
-template<> struct ListElementDefaultValue<unsigned long> { inline static unsigned long Value() { return 0; } };
-template<> struct ListElementDefaultValue<long long> { inline static long long Value() { return 0; } };
-template<> struct ListElementDefaultValue<unsigned long long> { inline static unsigned long long Value() { return 0; } };
-template<> struct ListElementDefaultValue<float> { inline static float Value() { return 0.0f; } };
-template<> struct ListElementDefaultValue<double> { inline static double Value() { return 0; } };
 
 template<
 	typename T, /** Type of objects to be stored inside the list */
-	typename ElementDtor = ListDefaultElementDestructor<T>, /** Function object which is called by Clear, RemoveAt, Remove or the list destructor */
+	typename ElementDtor = ContainerDefaultElementDestructor<T>, /** Function object which is called by Clear, RemoveAt, Remove or the list destructor */
 	bool CallElementDestructorOnListDestructor = true, /** Wheter or not to call the element destructor function object ElementDtor from the list destructor */
 	bool CallElementDestructorOnListCopy = false> /** Wheter or not to call the element destructor function object ElementDtor from the list assign operator */
 class List
@@ -126,6 +95,93 @@ private:
 		ListItem* _next;	/** A pointer to the next item on the list */
 		ListItem* _prev;	/** A pointer to the previous item on the list */
 		bool _isUsed;		/** When this is true that the element is valid */
+	};
+
+public:
+	/**
+	* Utility struct that can be used to iterate
+	* through the elements of the list in both directions
+	*/
+	struct Iterator
+	{
+		Iterator(List* list, ListItem* item, bool isBegin, bool isEnd)
+			: _list(list)
+			, _item(item)
+			, _isBegin(isBegin)
+			, _isEnd(isEnd)
+		{ }
+
+		operator bool() { return (_list != nullptr && _item != nullptr); }
+		
+		bool operator==(const Iterator& rhs) { return ((this->_list == rhs._list) && (this->_item == rhs._item) && (this->_isBegin == rhs._isBegin) && (this->_isEnd == rhs._isEnd)); }
+		bool operator!=(const Iterator& rhs) { return !operator==(rhs); }
+
+		ReferenceType operator*()
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator*]: the item is not valid";
+			return _item->_element;
+		}
+		ConstReferenceType operator*()
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator*]: the item is not valid";
+			return _item->_element;
+		}
+
+		ReferenceType operator->()
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator->]: the item is not valid";
+			return _item->_element;
+		}
+		ConstReferenceType operator->()
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator->]: the item is not valid";
+			return _item->_element;
+		}
+
+		Iterator& operator++()
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator++]: the item is not valid";
+			_item = item->_next;
+			return *this;
+		}
+		Iterator& operator--()
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator--]: the item is not valid";
+			_item = item->_prev;
+			return *this;
+		}
+
+		Iterator& operator+=(int n)
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator+=]: the item is not valid";
+
+			while (item != nullptr && n > 0)
+				item = item->_next;
+			return *this;
+		}
+
+		Iterator& operator-=(int n)
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator-=]: the item is not valid";
+
+			while (item != nullptr && n > 0)
+				item = item->_prev;
+			return *this;
+		}
+
+	private:
+		List* _list;
+		ListItem* _item;
+		bool _isEnd;
+		bool _isBegin;
 	};
 
 public:
@@ -328,13 +384,9 @@ private:
 		if (_growBy > 0)
 			return _growBy;
 
-		int grow = _capacity / 10;
-
-		// Clamp the growth between 1 and 20
-		if (grow < 1) grow = 1;
-		if (grow > 20) grow = 20;
-
-		return grow;
+		// Double the capacity to use the exponential grow
+		// in order to meet the ammortized constant time
+		return _capacity > 0 ? _capacity : 1;
 	}
 
 	/**
@@ -391,17 +443,18 @@ private:
 		_size--;
 	}
 
-	/** Utility method used by some method which are non-const */
+public:
+	/** Utility method used to get the default value for an element of the list */
 	ReferenceType DefaultValue()
 	{
-		static ValueType s_defaultValue = ListElementDefaultValue<ValueType>::Value();
+		static ValueType s_defaultValue = ContainerElementDefaultValue<ValueType>::Value();
 		return s_defaultValue;
 	}
 
-	/** Utility method used by some method which are const */
+	/** Utility method used to get the default value for an element of the list */
 	ConstReferenceType DefaultValue() const
 	{
-		static ValueType s_defaultValue = ListElementDefaultValue<ValueType>::Value();
+		static ValueType s_defaultValue = ContainerElementDefaultValue<ValueType>::Value();
 		return s_defaultValue;
 	}
 
@@ -482,9 +535,10 @@ public:
 	* Removes the element at the given index from the list
 	* Returns the list with the element removed
 	* index: index of the element to remove
+	* count: number of elements to remove starting at index
 	* callElementDestructor: if true ElementDestructor will be called passing the element which is being removed
 	*/
-	List& RemoveAt(int index, bool callElementDestructor = false)
+	List& RemoveAt(int index, int count = 1, bool callElementDestructor = false)
 	{
 		// Make sure the index is valid
 		if (index < 0 || index >= _size)
@@ -492,6 +546,13 @@ public:
 			std::cerr << "List error [RemoveAt]: invalid index" << std::endl;
 			return *this;
 		}
+
+		// Make sure count is valid
+		if (count <= 0)
+			return *this;
+
+		// Memorize the index where we will start removing elements
+		int indexRemoving = index;
 
 		// Find the item to remove
 		ListItem* itemToRemove = _head;
@@ -508,8 +569,87 @@ public:
 			return *this;
 		}
 
-		// Move the item to the free items list
-		RemoveElement(itemToRemove, callElementDestructor);
+		// Memorize the exact number of removed items
+		int itemsRemoved = 0;
+
+		ListItem* nextItemToRemove = itemToRemove->_next;
+		while (count-- > 0 && itemToRemove != nullptr && itemToRemove->_isUsed == true && indexRemoving < _size)
+		{
+			// Move the item to the free items list
+			RemoveElement(itemToRemove, callElementDestructor);
+
+			// Intialize the data needed to remove the next item
+			itemToRemove = nextItemToRemove;
+			
+			if(itemToRemove)
+				nextItemToRemove = itemToRemove->_next;
+
+			itemsRemoved++;
+			indexRemoving++;
+		}
+
+		_size -= itemsRemoved;
+
+		return *this;
+	}
+
+	/**
+	* Removes the element at the given index from the list starting from the end of the list
+	* Returns the list with the element removed
+	* index: index of the element to remove from the end of the list (index 0 means the end of the list)
+	* count: number of elements to remove starting at index and going backwards (e.g. count 2 and index 0 removes the last and the second-last elements int this sequence)
+	* callElementDestructor: if true ElementDestructor will be called passing the element which is being removed
+	*/
+	List& ReverseRemoveAt(int index, int count = 1, bool callElementDestructor = false)
+	{
+		// Make sure the index is valid
+		if (index < 0 || index >= _size)
+		{
+			std::cerr << "List error [ReverseRemoveAt]: invalid index" << std::endl;
+			return *this;
+		}
+
+		// Make sure count is valid
+		if (count <= 0)
+			return *this;
+
+		// Memorize the index where we will start removing elements
+		int indexRemoving = index;
+
+		// Find the item to remove
+		ListItem* itemToRemove = _tail;
+		while (index < _size && itemToRemove != nullptr)
+		{
+			itemToRemove = itemToRemove->_prev;
+			index++;
+		}
+
+		// Make sure we have found the item and that it is valid
+		if (index != _size || itemToRemove == nullptr || itemToRemove->_isUsed == false)
+		{
+			std::cerr << "List error [ReverseRemoveAt]: cannot find the item or the item is not valid" << std::endl;
+			return *this;
+		}
+
+		// Memorize the exact number of removed items
+		int itemsRemoved = 0;
+
+		ListItem* nextItemToRemove = itemToRemove->_prev;
+		while (count-- > 0 && itemToRemove != nullptr && itemToRemove->_isUsed == true && indexRemoving < _size)
+		{
+			// Move the item to the free items list
+			RemoveElement(itemToRemove, callElementDestructor);
+
+			// Intialize the data needed to remove the next item
+			itemToRemove = nextItemToRemove;
+
+			if (itemToRemove)
+				nextItemToRemove = itemToRemove->_prev;
+
+			itemsRemoved++;
+		}
+
+		_size -= itemsRemoved;
 
 		return *this;
 	}
@@ -536,6 +676,8 @@ public:
 
 		// Move the item to the free items list
 		RemoveElement(itemToRemove, callElementDestructor);
+
+		_size--;
 
 		return *this;
 	}
@@ -947,11 +1089,83 @@ public:
 		}
 	}
 
+	/**
+	* Sets the size of the list growing or shrinking accordingly.
+	* size: the new size that the list will have
+	* element: default values that will be set to the elements if the new size is bigger than the current one
+	* callElementsDestructor: if the new size is smaller than the current one and this parameter is given as true then the element destructor will be called for the elements to remove
+	*/
+	void SetSize(int size, ConstReferenceType element, bool callElementsDestructor = false)
+	{
+		// If the size is the name we can finish immediately
+		if (size == _size)
+			return;
+		
+		// If the new size is smaller than the current one we simply remove
+		// the excess and move it to the free items list
+		if (size < _size)
+			RemoveAt(size, _size - size, callElementsDestructor);
+		// Otherwise we need to add elements to the list
+		else
+		{
+			// If the new size is bigger than the list capacity it will also be bigger than the list size
+			// so grow the number elements that the list can store to speed up the Add method needed
+			if (size > _capacity)
+				Grow(size - _capacity);
+
+			// Compute the number of elements to add
+			int amount = size - _size;
+
+			// Add the necessary elements
+			// The Add method won't need to grow the list since a call to Grow has been made before
+			while (amount-- > 0)
+				Add(element);
+		}
+	}
+
 	/** Returns the number of elements inside the list */
 	int GetSize() const { return _size; }
 
 	/** Returns the number of elements that the list can store without the need to allocate more memory */
 	int GetCapacity() const { return _capacity; }
+
+	/** Returns an iterator that points to the first element of the list */
+	Iterator Begin() { return Iterator(this, _head, true, false); }
+	
+	/** Returns an iterator that points to the last element of the list */
+	Iterator End() { return Iterator(this, _tail, false, true); }
+
+	/** Returns the first element of the list. If the list has no elements this throws an exception */
+	ReferenceType Front()
+	{
+		if (_size == 0)
+			throw "List error[Front]: the list has no elements";
+		return *(Begin());
+	}
+
+	/** Returns the first element of the list. If the list has no elements this throws an exception */
+	ConstReferenceType Front() const
+	{
+		if (_size == 0)
+			throw "List error[Front]: the list has no elements";
+		return *(Begin());
+	}
+	
+	/** Returns the last element of the list. If the list has no elements this throws an exception */
+	ReferenceType Back()
+	{
+		if (_size == 0)
+			throw "List error[Back]: the list has no elements";
+		return *(End());
+	}
+
+	/** Returns the last element of the list. If the list has no elements this throws an exception */
+	ConstReferenceType Back() const
+	{
+		if (_size == 0)
+			throw "List error[Back]: the list has no elements";
+		return *(End());
+	}
 	
 private:
 	/** Pointer to the first item on the list */

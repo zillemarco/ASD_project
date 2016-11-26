@@ -73,8 +73,8 @@ void GraphElement::Copy(const GraphElement& src)
 * If the attribute with the given name doesn't exist it is added.
 * name: name of the attribute which the user wants to set
 * value: value of the attribute which the user wants to set
-* encloseNameInDoubleQuotes: if true a write needs to enclose the name of this attribute between double quotes
-* encloseValueInDoubleQuotes: if true a write needs to enclose the value of this attribute between double quotes
+* encloseNameInDoubleQuotes: if true then a writer needs to enclose the name of this attribute between double quotes
+* encloseValueInDoubleQuotes: if true then a writer needs to enclose the value of this attribute between double quotes
 */
 GraphElement& GraphElement::SetAttribute(const std::string& name, const std::string& value, bool encloseNameInDoubleQuotes, bool encloseValueInDoubleQuotes)
 {
