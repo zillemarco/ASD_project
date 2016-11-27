@@ -9,6 +9,7 @@ class Graph;
 
 class Edge : public GraphElement
 {
+	friend ContainerElementDefaultValue<Edge>;
 	friend Graph;
 
 protected:
@@ -43,6 +44,17 @@ public:
 
 	/** Move operator */
 	Edge& operator=(Edge&& src);
+
+	/** Equality operator. Checks the nodes of the edge */
+	friend bool operator==(const Edge& lhs, const Edge& rhs)
+	{
+		if (lhs._startNode != rhs._startNode || lhs._endNode != rhs._endNode)
+			return false;
+		return true;
+	}
+
+	/** Inequality operator. Checks the nodes of the edge */
+	friend bool operator!=(const Edge& lhs, const Edge& rhs) { return (lhs == rhs) == false; }
 
 private:
 	/** Utility function to use with copy constructor and assign operator */
@@ -79,4 +91,5 @@ private:
 	Node* _endNode;
 };
 
+template<> struct ContainerElementDefaultValue<Edge> { static Edge Value() { return Edge(); } };
 template<> struct ContainerElementDefaultValue<Edge*> { static Edge* Value() { return nullptr; } };

@@ -35,7 +35,14 @@ int main(int argc, char *argv[])
 
 	Graph result;
 	if (DotParser::Parse(result, dotFileContent))
+	{
+		if(result.IsCyclic())
+			std::cout << "The graph HAS cycles" << std::endl << std::endl;
+		else
+			std::cout << "The graph HAS NOT cycles" << std::endl << std::endl;
+
 		DotWriter::Write(result, std::cout);
+	}
 
 	return 0;
 }

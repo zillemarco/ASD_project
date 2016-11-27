@@ -11,28 +11,31 @@ Node::Node(const std::string& name, bool encloseNameInDoubleQuotes)
 	: GraphElement()
 	, _name(name)
 	, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
+	, _color(NodeColor::NC_White)
 { }
 
 /** Copy constructor */
 Node::Node(const Node& src)
 	: GraphElement(src)
-	, _edges(src._edges)
+	, _adjacentNodes(src._adjacentNodes)
 	, _name(src._name)
 	, _encloseNameInDoubleQuotes(src._encloseNameInDoubleQuotes)
+	, _color(src._color)
 { }
 
 /** Move constructor */
 Node::Node(Node&& src)
 	: GraphElement(src)
-	, _edges(std::move(src._edges))
+	, _adjacentNodes(std::move(src._adjacentNodes))
 	, _name(std::move(src._name))
 	, _encloseNameInDoubleQuotes(std::move(src._encloseNameInDoubleQuotes))
+	, _color(std::move(src._color))
 { }
 
 /** Destructor */
 Node::~Node()
 {
-	_edges.Clear();
+	_adjacentNodes.Clear();
 }
 
 /** Assign operator */
@@ -52,10 +55,11 @@ Node& Node::operator=(Node&& src)
 
 	if (this != &src)
 	{
-		_edges.Clear();
-		_edges = std::move(src._edges);
+		_adjacentNodes.Clear();
+		_adjacentNodes = std::move(src._adjacentNodes);
 		_name = std::move(src._name);
 		_encloseNameInDoubleQuotes = std::move(src._encloseNameInDoubleQuotes);
+		_color = std::move(src._color);
 	}
 	return *this;
 }
@@ -63,95 +67,53 @@ Node& Node::operator=(Node&& src)
 /** Utility function to use with copy constructor and assign operator */
 void Node::Copy(const Node& src)
 {
-	_edges = src._edges;
+	_adjacentNodes = src._adjacentNodes;
 	_name = src._name;
 	_encloseNameInDoubleQuotes = src._encloseNameInDoubleQuotes;
+	_color = src._color;
 }
 
-/** Adds the given edge to the list of edges connected to this node */
-Node& Node::AddEdge(Edge* edge)
+/**
+* Adds the given node to the list of adjacent nodes of this node.
+* It checks if the ndode is alreay inside the list of adjacent nodes to not add it multiple times
+*/
+Node& Node::AddAdjacentNode(Node* adjacentNode)
 {
 	// Check if the edge is alredy present
-	if (GetEdgeIndex(edge) == -1)
-		_edges.Add(edge);
+	if (GetAdjacentNodeIndex(adjacentNode) == -1)
+		_adjacentNodes.Add(adjacentNode);
 	return *this;
 }
 
-/** Removes the given edge from the list of edges connected to this node */
-Node& Node::RemoveEdge(Edge* edge)
+/** Removes the given node from the list of adjacent nodes of this node */
+Node& Node::RemoveAdjacentNode(Node* adjacentNode)
 {
 	// Get the edge index inside of the list
-	int index = GetEdgeIndex(edge);
+	int index = GetAdjacentNodeIndex(adjacentNode);
 
 	// Check if the edge was found and remove it from the list
 	if (index >= 0)
-		_edges.RemoveAt(index);
+		_adjacentNodes.RemoveAt(index);
 
 	return *this;
 }
 
-/** Removes the edge from the list of edges connected to this node at the given index */
-Node& Node::RemoveEdgeAt(int index)
-{
-	// Check if the index is valid and then remove the element from the list
-	if (index >= 0 && index < _edges.GetSize())
-		_edges.RemoveAt(index);
-	return *this;
-}
-
 /**
-* Returns true or false depending if this node is the start node of the given edge
-* This also returns false if this node isn't connected with the given edge
+* Returns the index of the given node inside the list of adjacent nodes of this node
+* If the given node cannot be reached directly through this node returns -1
 */
-bool Node::IsStartingNode(Edge* edge) const
-{
-	// Check if the edge is valid and then if this node is the starting node of the edge
-	// Is it sufficient to check if the starting node of the edge is this node to also ensure
-	// that this node is connected to the edge (it is ensured by the Graph class)
-	if (edge != nullptr)
-		return edge->GetStartNode() == this;
-	return false;
-}
-
-/**
-* Returns true or false depending if this node is the end node of the given edge
-* This also returns false if this node isn't connected with the given edge
-*/
-bool Node::IsEndingNode(Edge* edge) const
-{
-	// Check if the edge is valid and then if this node is the ending node of the edge
-	// Is it sufficient to check if the ending node of the edge is this node to also ensure
-	// that this node is connected to the edge (it is ensured by the Graph class)
-	if (edge != nullptr)
-		return edge->GetEndNode() == this;
-	return false;
-}
-
-/** Returns true or false depending if this node is or isn't connected with the given edge */
-bool Node::IsConnectedWithEdge(Edge* edge) const
-{
-	// Check if the edge is valid and then if this node is the ending node of the edge
-	if (edge != nullptr)
-		return (edge->GetStartNode() == this || edge->GetEndNode() == this);
-	return false;
-}
-
-/**
-* Returns the index of the given edge inside the list of edges connected with this node
-* If the given edge isn't connected with this node this function returns -1
-*/
-int Node::GetEdgeIndex(Edge* edge) const
+int Node::GetAdjacentNodeIndex(Node* adjacentNode) const
 {
 	// Here is used List::Find since it's faster that looping through the list
 	// since every List::GetAt cycles through the items of the list
-	return _edges.Find(edge);
+	return _adjacentNodes.Find(adjacentNode);
 
 	// This is the slow version
 	//
-	// int edgesCount = _edges.GetSize();
-	// for (int i = 0; i < edgesCount; i++)
+	// int adjacentNodesCount = _adjacentNodes.GetSize();
+	// for (int i = 0; i < adjacentNodesCount; i++)
 	// {
-	// 	if (_edges[i] == edge)
+	// 	if (_adjacentNodes[i] == adjacentNode)
 	// 		return i;
 	// }
 	// return -1;

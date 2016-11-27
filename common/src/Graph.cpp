@@ -2,99 +2,35 @@
 
 #include "Stack.h"
 
-/** Extended node used by the Tarjan algorithm */
-class TarjanNode : public Node
-{
-public:
-	TarjanNode()
-		: _index(0)
-		, _lowLink(0)
-	{ }
-
-	TarjanNode(const Node& sourceNode, int index, int lowLink)
-		: Node(sourceNode)
-		, _index(index)
-		, _lowLink(lowLink)
-	{ }
-
-	TarjanNode(const TarjanNode& src)
-		: Node(src)
-		, _index(src._index)
-		, _lowLink(src._lowLink)
-	{ }
-
-	TarjanNode(TarjanNode&& src)
-		: Node(std::move(src))
-		, _index(std::move(src._index))
-		, _lowLink(std::move(src._lowLink))
-	{ }
-
-	TarjanNode& operator=(const TarjanNode& src)
-	{
-		Node::operator=(src);
-
-		if (this != &src)
-		{
-			_index = src._index;
-			_lowLink = src._lowLink;
-		}
-
-		return *this;
-	}
-
-	TarjanNode& operator=(TarjanNode&& src)
-	{
-		Node::operator=(src);
-
-		if (this != &src)
-		{
-			_index = std::move(src._index);
-			_lowLink = std::move(src._lowLink);
-		}
-
-		return *this;
-	}
-
-public:
-	/** Sets the index value */
-	TarjanNode& SetIndex(int index) { _index = index; return *this; }
-
-	/** Returns the index value */
-	int SetIndex() const { return _index; }
-
-	/** Sets the low link value */
-	TarjanNode& SetLowLink(int lowLink) { _lowLink = lowLink; return *this; }
-
-	/** Returns the low link value */
-	int GetLowLink() const { return _index; }
-
-private:
-	int _index;
-	int _lowLink;
-};
-
-template<> struct ContainerElementDefaultValue<TarjanNode> { static TarjanNode Value() { return TarjanNode(); } };
-
 /**
 * Comparator used by Graph::AddEdge to check if an edge with the
 * given start and end nodes exists
 */ 
 struct EdgeComparator
 {
-	EdgeComparator(const Node* startNode, const Node* endNode)
+	EdgeComparator(const Node& startNode, const Node& endNode, Graph::GraphType graphType)
 		: _startNode(startNode)
 		, _endNode(endNode)
+		, _graphType(graphType)
 	{ }
 
-	inline bool operator()(const Edge* edge)
+	inline bool operator()(const Edge& edge)
 	{
-		if(edge != nullptr)
-			return edge->GetStartNode() == _startNode && edge->GetEndNode() == _endNode;
+		// If the graph is directed two edges as equal only if the start and end node are the same
+		if(_graphType == Graph::GT_Directed)
+			return (*edge.GetStartNode()) == _startNode && (*edge.GetEndNode()) == _endNode;
+		// If the graph is not directed there start and end node don't exist so two edges are equal
+		// also if the start and end node are the same
+		else
+		{
+			return ((*edge.GetStartNode()) == _startNode && (*edge.GetEndNode()) == _endNode) || ((*edge.GetStartNode()) == _endNode && (*edge.GetEndNode()) == _startNode);
+		}
 		return false;
 	}
 
-	const Node* _startNode;
-	const Node* _endNode;
+	const Node& _startNode;
+	const Node& _endNode;
+	Graph::GraphType _graphType;
 };
 
 /** Comparator used by Graph::GetNode to get a node from a given name */
@@ -104,11 +40,9 @@ struct NodeComparator
 		: _name(name)
 	{ }
 
-	inline bool operator()(const Node* node)
+	inline bool operator()(const Node& node)
 	{
-		if(node != nullptr)
-			return node->GetName() == _name;
-		return false;
+		return node.GetName() == _name;
 	}
 
 	std::string _name;
@@ -207,26 +141,28 @@ Edge* Graph::AddEdge(Node* startNode, Node* endNode)
 		return nullptr;
 	}
 
-	if (_edges.Find(EdgeComparator(startNode, endNode)) != -1)
+	if (_edges.Find(EdgeComparator(*startNode, *endNode, _graphType)) != -1)
 	{
-		std::cerr << "Graph error [AddEdge]: an edge with the given start and end nodes already exists" << std::endl;
+		std::cerr << "Graph error [AddEdge]: an edge with the given nodes already exists" << std::endl;
 		return nullptr;
 	}
 
 	// Create the new edge and add it to the list of edges of the graph
-	Edge* edge = CreateEdge(startNode, endNode);
+	_edges.Add(Edge(startNode, endNode));
 
-	// Add the edge only if it was created successfully
-	if (edge != nullptr)
+	// If the graph is directed add the end node to the adjacency list of the start node
+	if (_graphType == GT_Directed)
+		startNode->AddAdjacentNode(endNode);
+	// If the graph is not directed then both the nodes can be reached through one or the other
+	// so add both to the adjacency list of the other one
+	else
 	{
-		_edges.Add(edge);
-
-		// Add the new edge to the list of connected edges of startNode and endNode
-		startNode->AddEdge(edge);
-		endNode->AddEdge(edge);
+		startNode->AddAdjacentNode(endNode);
+		endNode->AddAdjacentNode(startNode);
 	}
 
-	return edge;
+	// Return the last edge inside the list which is the one which has been added
+	return &_edges.Back();
 }
 
 /**
@@ -293,7 +229,7 @@ Edge* Graph::GetEdge(int index)
 {
 	// Check if the index is valid
 	if (index >= 0 && index < _edges.GetSize())
-		return _edges.GetAt(index);
+		return &_edges.GetAt(index);
 	return nullptr;
 }
 
@@ -321,13 +257,10 @@ Node* Graph::AddNode(const std::string& name, bool encloseNodeNameInDoubleQuotes
 	else
 	{
 		// Otherwise create the new node, add it to the list of nodes of the graph and return it
-		node = CreateNode(name, encloseNodeNameInDoubleQuotes);
+		_nodes.Add(Node(name, encloseNodeNameInDoubleQuotes));
 
-		// Add the node only if it was created successfully
-		if (node != nullptr)
-			_nodes.Add(node);
-
-		return node;
+		// Returns the last node inside the list which is the one that has been just added
+		return &_nodes.Back();
 	}
 }
 
@@ -339,7 +272,7 @@ Node* Graph::GetNode(int index)
 {
 	// Check if the index is valid
 	if (index >= 0 && index < _nodes.GetSize())
-		return _nodes.GetAt(index);
+		return &_nodes.GetAt(index);
 	return nullptr;
 }
 
@@ -347,24 +280,80 @@ Node* Graph::GetNode(int index)
 Node* Graph::GetNode(const std::string& nodeName)
 {
 	bool found = false;
-	return _nodes.FindElement(NodeComparator(nodeName), found);
+	Node* result = &_nodes.FindElement(NodeComparator(nodeName), found);
+
+	if (found == true)
+		return result;
+	return nullptr;
 }
 
-/**
-* Applies the Tarjan's altgorithm to return all the strongly connected components of this graph.
-* Only works if the graph is directed.
-* Returns false if there are errors.
-*/
-bool Graph::Tarjan(List<Graph>& resultGraphs) const
+/** Applies the DSF algorithm to see if the graph contains cycles inside */
+bool Graph::IsCyclic() const
 {
-	// This algorithm works only for directed graphs
-	if (_graphType != GT_Directed)
+	// Get the values here to save up some function calls
+	int nodesCount = _nodes.GetSize();
+	int edgesCount = _edges.GetSize();
+
+	// If the graph has no edges then it cannot contain a cycle
+	if (edgesCount == 0)
 		return false;
 
-	Stack<TarjanNode> stack;
-	int index = 0;
+	// If the graph has no nodes it cannot contain a cycle (also should't reach here... without edges there shouldn't be nodes...)
+	if (nodesCount == 0)
+		return false;
 
+	// If the graph has edge and is not directed it can only have cycles
+	if (_graphType != GT_Directed)
+		return true;
 
+	// Otherwise we need to use DSF to check
+	
+	// Create a copy of this graph to not modify it
+	Graph tmpGraph(*this);
 
-	return true;
+	NodeList::Iterator it = tmpGraph._nodes.Begin();
+	NodeList::Iterator end = tmpGraph._nodes.End();
+
+	// Loop through the nodes of the graph until we finish them or we find a cycle
+	bool result = false;
+	for (; it && it != end && result == false; it++)
+	{
+		// Do a DSF visit only if the node is 'white'
+		if ((*it).GetColor() == Node::NodeColor::NC_White)
+		{
+			// Do the DSF visit to see if we can find a cycle starting from the node 'it'
+			result = IsCyclicUtility(&(*it));
+		}
+	}
+
+	// If result is still false the graph doesn't contain ant cycle
+	return result;
+}
+
+bool Graph::IsCyclicUtility(Node* node)
+{
+	// Mark the node so that we know it is being processed
+	node->SetColor(Node::NodeColor::NC_Gray);
+
+	const List<Node*>& adjacentNodes = node->GetAdjacentNodes();
+
+	List<Node*>::ConstIterator it = adjacentNodes.Begin();
+	List<Node*>::ConstIterator end = adjacentNodes.End();
+
+	for (; it && it != end; it++)
+	{
+		// If the node is being processed by the DFS then we have found a loop inside the graph
+		if (it->GetColor() == Node::NodeColor::NC_Gray)
+			return true;
+
+		// If the node hasn't been processed we run IsCyclicUtility on it to see if we can find a loop starting from it
+		if (it->GetColor() == Node::NodeColor::NC_White && IsCyclicUtility(*it))
+			return true;
+	}
+
+	// Mark the node so that we know it has been processed correctly
+	node->SetColor(Node::NodeColor::NC_Black);
+
+	// We haven't found a cycle starting from the given node
+	return false;
 }

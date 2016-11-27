@@ -40,30 +40,26 @@ struct NodesWriter
 		: _output(output)
 	{ }
 
-	bool operator()(const Node* node, int index, bool lastElement)
+	bool operator()(const Node& node, int index, bool lastElement)
 	{
-		// If the node is not valid we cannot write it
-		if (node == nullptr)
-			return true;
-
 		// If the node has no connected edges or has at least one attribute then we must write it
 		// otherwise the node will be written by the edge connected to the node and we can save space here
-		if(node->HasEdges() == false || node->HasAttributes())
+		if(node.HasAdjacentNodes() == false || node.HasAttributes())
 		{
 			// Write the node name
-			if (node->EncloseNameInDoubleQuotes())
+			if (node.EncloseNameInDoubleQuotes())
 				(*_output) << "\"";
-			(*_output) << node->GetName();
-			if (node->EncloseNameInDoubleQuotes())
+			(*_output) << node.GetName();
+			if (node.EncloseNameInDoubleQuotes())
 				(*_output) << "\"";
 
-			if (node->HasAttributes() == false)
+			if (node.HasAttributes() == false)
 				(*_output) << ";" << std::endl;
 			else
 			{
 				(*_output) << " [";
 
-				node->GetAttributes().ForEach(AttributesWriter(_output));
+				node.GetAttributes().ForEach(AttributesWriter(_output));
 
 				(*_output) << "];" << std::endl;
 			}
@@ -82,41 +78,38 @@ struct EdgesWriter
 		, _edgeSymbol(edgeSymbol)
 	{ }
 
-	bool operator()(const Edge* edge, int index, bool lastElement)
+	bool operator()(const Edge& edge, int index, bool lastElement)
 	{
-		if (edge != nullptr)
+		// There two must be valid and this is ensured by the Graph class
+		const Node* startNode = edge.GetStartNode();
+		const Node* endNode = edge.GetEndNode();
+
+		// Write the start node name
+		if (startNode->EncloseNameInDoubleQuotes())
+			(*_output) << "\"";
+		(*_output) << startNode->GetName();
+		if (startNode->EncloseNameInDoubleQuotes())
+			(*_output) << "\"";
+
+		// Write the connection symbol
+		(*_output) << _edgeSymbol;
+
+		// Write the end node name
+		if (endNode->EncloseNameInDoubleQuotes())
+			(*_output) << "\"";
+		(*_output) << endNode->GetName();
+		if (endNode->EncloseNameInDoubleQuotes())
+			(*_output) << "\"";
+
+		if (edge.HasAttributes() == false)
+			(*_output) << ";" << std::endl;
+		else
 		{
-			// There two must be valid and this is ensured by the Graph class
-			const Node* startNode = edge->GetStartNode();
-			const Node* endNode = edge->GetEndNode();
+			(*_output) << " [";
 
-			// Write the start node name
-			if (startNode->EncloseNameInDoubleQuotes())
-				(*_output) << "\"";
-			(*_output) << startNode->GetName();
-			if (startNode->EncloseNameInDoubleQuotes())
-				(*_output) << "\"";
+			edge.GetAttributes().ForEach(AttributesWriter(_output));
 
-			// Write the connection symbol
-			(*_output) << _edgeSymbol;
-
-			// Write the end node name
-			if (endNode->EncloseNameInDoubleQuotes())
-				(*_output) << "\"";
-			(*_output) << endNode->GetName();
-			if (endNode->EncloseNameInDoubleQuotes())
-				(*_output) << "\"";
-
-			if (edge->HasAttributes() == false)
-				(*_output) << ";" << std::endl;
-			else
-			{
-				(*_output) << " [";
-
-				edge->GetAttributes().ForEach(AttributesWriter(_output));
-
-				(*_output) << "];" << std::endl;
-			}
+			(*_output) << "];" << std::endl;
 		}
 
 		return true;

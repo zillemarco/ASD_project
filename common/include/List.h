@@ -98,21 +98,144 @@ private:
 	};
 
 public:
-	/**
-	* Utility struct that can be used to iterate
-	* through the elements of the list in both directions
-	*/
-	struct Iterator
+
+	/** Utility struct that can be used to iterate through the elements of the list in both directions */
+	class ConstIterator
 	{
-		Iterator(List* list, ListItem* item, bool isBegin, bool isEnd)
+	public:
+		ConstIterator(const List* list, const ListItem* item, bool isBegin, bool isEnd)
 			: _list(list)
 			, _item(item)
 			, _isBegin(isBegin)
 			, _isEnd(isEnd)
 		{ }
 
+		ConstIterator(const ConstIterator& src)
+			: _list(src._list)
+			, _item(src._item)
+			, _isBegin(src._isBegin)
+			, _isEnd(src._isEnd)
+		{ }
+
+		ConstIterator(ConstIterator&& src)
+			: _list(std::move(src._list))
+			, _item(std::move(src._item))
+			, _isBegin(std::move(src._isBegin))
+			, _isEnd(std::move(src._isEnd))
+		{ }
+
+		virtual ~ConstIterator() { }
+
 		operator bool() { return (_list != nullptr && _item != nullptr); }
-		
+
+		bool operator==(const ConstIterator& rhs) { return ((this->_list == rhs._list) && (this->_item == rhs._item) && (this->_isBegin == rhs._isBegin) && (this->_isEnd == rhs._isEnd)); }
+		bool operator!=(const ConstIterator& rhs) { return !operator==(rhs); }
+
+		ConstReferenceType operator*() const
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator*]: the item is not valid";
+			return _item->_element;
+		}
+
+		ConstReferenceType operator->() const
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator->]: the item is not valid";
+			return _item->_element;
+		}
+
+		ConstIterator& operator++()
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator++]: the item is not valid";
+			_item = item->_next;
+			return *this;
+		}
+		ConstIterator operator++(int)
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator++]: the item is not valid";
+
+			ConstIterator tmp(*this);
+			_item = _item->_next;
+			return tmp;
+		}
+
+		ConstIterator& operator--()
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator--]: the item is not valid";
+			_item = item->_prev;
+			return *this;
+		}
+		ConstIterator operator--(int)
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator--]: the item is not valid";
+
+			ConstIterator tmp(*this);
+			_item = _item->_prev;
+			return tmp;
+		}
+
+		ConstIterator& operator+=(int n)
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator+=]: the item is not valid";
+
+			while (item != nullptr && n > 0)
+				item = item->_next;
+			return *this;
+		}
+
+		ConstIterator& operator-=(int n)
+		{
+			if (_item == nullptr)
+				throw "List ConstIterator error [operator-=]: the item is not valid";
+
+			while (item != nullptr && n > 0)
+				item = item->_prev;
+			return *this;
+		}
+
+	private:
+		const List* _list;
+		const ListItem* _item;
+		bool _isEnd;
+		bool _isBegin;
+	};
+
+
+	/** Utility struct that can be used to iterate through the elements of the list in both directions */
+	class Iterator
+	{
+	public:
+		Iterator(const List* list, ListItem* item, bool isBegin, bool isEnd)
+			: _list(list)
+			, _item(item)
+			, _isBegin(isBegin)
+			, _isEnd(isEnd)
+		{ }
+
+		Iterator(const Iterator& src)
+			: _list(src._list)
+			, _item(src._item)
+			, _isBegin(src._isBegin)
+			, _isEnd(src._isEnd)
+		{ }
+
+		Iterator(Iterator&& src)
+			: _list(std::move(src._list))
+			, _item(std::move(src._item))
+			, _isBegin(std::move(src._isBegin))
+			, _isEnd(std::move(src._isEnd))
+		{ }
+
+		virtual ~Iterator() { }
+
+		operator bool() { return (_list != nullptr && _item != nullptr); }
+
 		bool operator==(const Iterator& rhs) { return ((this->_list == rhs._list) && (this->_item == rhs._item) && (this->_isBegin == rhs._isBegin) && (this->_isEnd == rhs._isEnd)); }
 		bool operator!=(const Iterator& rhs) { return !operator==(rhs); }
 
@@ -122,7 +245,7 @@ public:
 				throw "List Iterator error [operator*]: the item is not valid";
 			return _item->_element;
 		}
-		ConstReferenceType operator*()
+		ConstReferenceType operator*() const
 		{
 			if (_item == nullptr)
 				throw "List Iterator error [operator*]: the item is not valid";
@@ -135,7 +258,7 @@ public:
 				throw "List Iterator error [operator->]: the item is not valid";
 			return _item->_element;
 		}
-		ConstReferenceType operator->()
+		ConstReferenceType operator->() const
 		{
 			if (_item == nullptr)
 				throw "List Iterator error [operator->]: the item is not valid";
@@ -149,12 +272,31 @@ public:
 			_item = item->_next;
 			return *this;
 		}
+		Iterator operator++(int)
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator++]: the item is not valid";
+
+			Iterator tmp(*this);
+			_item = _item->_next;
+			return tmp;
+		}
+
 		Iterator& operator--()
 		{
 			if (_item == nullptr)
 				throw "List Iterator error [operator--]: the item is not valid";
 			_item = item->_prev;
 			return *this;
+		}
+		Iterator operator--(int)
+		{
+			if (_item == nullptr)
+				throw "List Iterator error [operator--]: the item is not valid";
+
+			Iterator tmp(*this);
+			_item = _item->_prev;
+			return tmp;
 		}
 
 		Iterator& operator+=(int n)
@@ -178,7 +320,7 @@ public:
 		}
 
 	private:
-		List* _list;
+		const List* _list;
 		ListItem* _item;
 		bool _isEnd;
 		bool _isBegin;
@@ -294,6 +436,39 @@ public:
 	* If the index is invalid the value returned is the default specified on the template.
 	*/
 	ConstReferenceType operator[](int index) const { return GetAt(index); }
+
+	/** Equality operator. Calls the equality operator of the element type to see if the lists are the same */
+	friend bool operator==(const List& lhs, const List& rhs)
+	{
+		// If the two lists have different size then they are different
+		if (lhs.GetSize() != rhs.GetSize())
+			return false;
+
+		// Loop through the items. The first one we find that is different means that the other list
+		// is different from the current one
+		ListItem* item_a = lhs._head;
+		ListItem* item_b = rhs._head;
+
+		while (item_a != nullptr && item_b != nullptr)
+		{
+			if (item_a->_element != item_b->_element)
+				return false;
+
+			// Move to the next item
+			item_a = item_a->_next;
+			item_b = item_b->_next;
+		}
+
+		// The elements are also the same so the two lists are equal
+		return true;
+	}
+
+	/**
+	* Inequality operator.
+	* Calls the equality operator of the element type to see if the lists are the same.
+	* Internally uses the equality operator of the list
+	*/
+	friend bool operator!=(const List& lhs, const List& rhs) { return (lhs == rhs) == false; }
 
 private:
 	void Copy(const List& src)
@@ -1131,9 +1306,15 @@ public:
 
 	/** Returns an iterator that points to the first element of the list */
 	Iterator Begin() { return Iterator(this, _head, true, false); }
+
+	/** Returns an iterator that points to the first element of the list */
+	ConstIterator Begin() const { return ConstIterator(this, _head, true, false); }
 	
 	/** Returns an iterator that points to the last element of the list */
 	Iterator End() { return Iterator(this, _tail, false, true); }
+
+	/** Returns an iterator that points to the last element of the list */
+	ConstIterator End() const { return ConstIterator(this, _tail, false, true); }
 
 	/** Returns the first element of the list. If the list has no elements this throws an exception */
 	ReferenceType Front()

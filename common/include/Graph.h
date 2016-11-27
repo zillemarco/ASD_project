@@ -6,44 +6,11 @@
 
 #include <string>
 
-/**
-* Element destructor used by the list of edges of Graph.
-* Deletes the edge and sets it to nullptr
-*/
-struct EdgeListDestructor
-{
-	inline void operator()(Edge*& edge)
-	{
-		// Make sure the edge is valid and then destroy it
-		if (edge != nullptr)
-		{
-			delete edge;
-			edge = nullptr;
-		}
-	}
-};
-
-/**
-* Element destructor used by the list of nodes of Graph.
-* Deletes the node and sets it to nullptr
-*/
-struct NodeListDestructor
-{
-	inline void operator()(Node*& node)
-	{
-		// Make sure the node is valid and then destroy it
-		if (node != nullptr)
-		{
-			delete node;
-			node = nullptr;
-		}
-	}
-};
-
 class Graph
 {
-	typedef List<Edge*, EdgeListDestructor> EdgeList;
-	typedef List<Node*, NodeListDestructor> NodeList;
+public:
+	typedef List<Edge> EdgeList;
+	typedef List<Node> NodeList;
 
 public:
 	enum GraphType
@@ -52,7 +19,7 @@ public:
 		GT_Directed,
 		GT_NotValid
 	};
-
+	
 public:
 	/** Default constructor */
 	Graph();
@@ -150,40 +117,12 @@ public:
 	/** Returns the list of edges of this graph */
 	const NodeList& GetNodes() const { return _nodes; }
 
-	/**
-	* Applies the Tarjan's altgorithm to return all the strongly connected components of this graph.
-	* Only works if the graph is directed.
-	* Returns false if there are errors.
-	*/
-	bool Tarjan(List<Graph>& resultGraphs) const;
+	/** Applies the DSF algorithm to see if the graph contains cycles inside */
+	bool IsCyclic() const;
 
 protected:
-	/**
-	* This method is used by AddNode when the node is not present inside the
-	* graph so there is the need to create a new one.
-	* It is meant to be overriden by a derived class to return an instance of
-	* a Node class that could be derived to store additional data.
-	* name: the name to give to the newly created node
-	* encloseNodeNameInDoubleQuotes: if true then a writer needs to enclose the name of this graph between double quotes
-	*/
-	virtual Node* CreateNode(const std::string& name, bool encloseNodeNameInDoubleQuotes)
-	{
-		return new Node(name, encloseNodeNameInDoubleQuotes);
-	}
-
-	/**
-	* This method is used by AddEdge when the edge is not present inside the
-	* graph so there is the need to create a new one.
-	* It is meant to be overriden by a derived class to return an instance of
-	* a Edge class that could be derived to store additional data.
-	* startNode: the first node of the edge
-	* endNode: the second node of the edge
-	*/
-	virtual Edge* CreateEdge(Node* startNode, Node* endNode)
-	{
-		return new Edge(startNode, endNode);
-	}
-	
+	static bool IsCyclicUtility(Node* node);
+		
 private:
 	/** The type of this graph */
 	GraphType _graphType;
