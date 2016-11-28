@@ -6,11 +6,13 @@
 // Forward declaration of used types
 class Node;
 class Graph;
+class ASDProjectSolver;
 
 class Edge : public GraphElement
 {
 	friend ContainerElementDefaultValue<Edge>;
 	friend Graph;
+	friend ASDProjectSolver;
 
 protected:
 	/**
@@ -72,8 +74,14 @@ private:
 
 public:
 	/** Returns a pointer to the start node of this edge */
+	inline Node* GetStartNode() { return _startNode; }
+
+	/** Returns a pointer to the start node of this edge */
 	inline const Node* GetStartNode() const { return _startNode; }
-		
+	
+	/** Returns a pointer to the end node of this edge */
+	inline Node* GetEndNode() { return _endNode; }
+
 	/** Returns a pointer to the end node of this edge */
 	inline const Node* GetEndNode() const { return _endNode; }
 	
@@ -83,12 +91,22 @@ public:
 	*/
 	inline bool IsValid() const { return _startNode != nullptr && _endNode != nullptr && _startNode != _endNode; }
 
+	/** Method to check is this edge was added by the ASDProjectSolver */
+	inline bool IsAddedBySolver() const { return _addedBySolver; }
+
+private:
+	/** Method to set the value of _addedBySolver. Only ASDPorjectSolver may call this method */
+	inline void SetAddedBySolver(bool addedBySolver) { _addedBySolver = addedBySolver; }
+
 private:
 	/** Pointer to the start node of this edge */
 	Node* _startNode;
 
 	/** Pointer to the end node of this edge */
 	Node* _endNode;
+
+	/** Flag set from ASDProjectSolver only to mark the edge if it was added */
+	bool _addedBySolver;
 };
 
 template<> struct ContainerElementDefaultValue<Edge> { static Edge Value() { return Edge(); } };

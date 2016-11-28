@@ -6,8 +6,12 @@
 
 #include <string>
 
+class ASDProjectSolver;
+
 class Graph
 {
+	friend ASDProjectSolver;
+
 public:
 	typedef List<Edge> EdgeList;
 	typedef List<Node> NodeList;
@@ -88,6 +92,15 @@ public:
 	*/
 	Edge* AddEdge(const std::string& startNodeName, const std::string& endNodeName, bool encloseStartNodeNameInDoubleQuotes, bool encloseEndNodeNameInDoubleQuotes);
 
+	/** Removes the edge at the given index from the edges of the graph */
+	Graph& RemoveEdge(int edgeIndex);
+	
+	/** Removes the given edge from the edges of the graph */
+	Graph& RemoveEdge(Edge* edge);
+
+	/** Removes the given edge from the edges of the graph */
+	Graph& RemoveEdgeWithIterator(EdgeList::Iterator& it);
+
 	/**
 	* Gets the edge at the given index from inside the list of edges of this graph
 	* If the given index is not valid returns nullptr
@@ -152,6 +165,14 @@ public:
 	*/
 	NodePointersList GetUnreachableNodes(const std::string& nodeName, bool setNodesColorToWhiteAtStart = false, bool revertAllNodesToPreviousColor = false);
 
+	/**
+	* Returns the number of nodes that the given node cannot reach.
+	* node: the node from where to start the search
+	* setNodesColorToWhiteAtStart: if the caller of this method is not sure that all the nodes are currently white-colord, pass this parameter as true
+	* revertAllNodesToPreviousColor: if this is given as true then the color all the nodes of the graph is restored to the one previous to this call. It adds an extra loop through the node's list
+	*/
+	int GetUnreachableNodesCount(Node* node, bool setNodesColorToWhiteAtStart = false, bool revertAllNodesToPreviousColor = false);
+
 	/** Returns true if the node hasn't got any entrant edge */
 	bool IsNonEntrantNode(const Node* node) const;
 
@@ -169,6 +190,16 @@ protected:
 	* Returns false if a cycle is found.
 	*/
 	static bool MarkReachableNodes(Node* node);
+
+private:
+	/** Removes all the edges marked as added by ASDProjectSolver */
+	Graph& RemoveEdgesAddedByASDProjectSolver();
+
+	/**
+	* Adds a new edge without doing any check. (Utility for the copy operator and constructor)
+	* Returns a pointer to the new edge.
+	*/
+	Edge* AddEdgeNoCheck(const std::string& startNodeName, const std::string& endNodeName);
 		
 private:
 	/** The type of this graph */

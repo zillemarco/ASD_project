@@ -86,15 +86,9 @@ Node& Node::AddAdjacentNode(Node* adjacentNode)
 }
 
 /** Removes the given node from the list of adjacent nodes of this node */
-Node& Node::RemoveAdjacentNode(Node* adjacentNode)
+Node& Node::RemoveAdjacentNode(const Node* adjacentNode)
 {
-	// Get the edge index inside of the list
-	int index = GetAdjacentNodeIndex(adjacentNode);
-
-	// Check if the edge was found and remove it from the list
-	if (index >= 0)
-		_adjacentNodes.RemoveAt(index);
-
+	_adjacentNodes.Remove((Node* const&)adjacentNode);
 	return *this;
 }
 

@@ -78,7 +78,7 @@ private:
 	Node& AddAdjacentNode(Node* adjacentNode);
 
 	/** Removes the given node from the list of adjacent nodes of this node */
-	Node& RemoveAdjacentNode(Node* adjacentNode);
+	Node& RemoveAdjacentNode(const Node* adjacentNode);
 		
 public:
 	/** Returns the name of this node */

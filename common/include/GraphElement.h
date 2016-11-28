@@ -89,7 +89,11 @@ public:
 	*/
 	const std::string& GetAttribute(const std::string& attributeName, const std::string& alternative) const;
 
+	/** Returns the list of the attributes of this graph element */
 	const AttributeList& GetAttributes() const { return _attributes; }
+
+	/** Copies the attributes from the source graph elemento into this one */
+	void CopyAttributes(const GraphElement& src) { _attributes = src._attributes; }
 	
 private:
 	/** List of all the attributes of the graph element */

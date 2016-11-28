@@ -56,8 +56,12 @@ bool DotParser::Parse(Graph& resultGraph, const std::string& dotDefinition)
 	std::string tmpStr;
 	bool enclosedInDoubleQuotes = false;
 		
-	// Parse the first token. Could be strict, graph or digraph
+	// Parse the first token. Could be strict, graph, digraph, a comment or invalid
 	Token tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
+
+	// Remove all the comments at the start
+	while(tk == TOK_Comment && tk != TOK_NotValid)
+		tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
 
 	// strict isn't supported so report a warning and parse a second token which must be graph or digraph
 	if (tk == TOK_Strict)
@@ -76,6 +80,11 @@ bool DotParser::Parse(Graph& resultGraph, const std::string& dotDefinition)
 	// We now look for a name for the graph or an open bracket
 	tk = ParseToken(tmpStr, enclosedInDoubleQuotes, parseIndex, dotDefinitionData, dotDefinitionDataLength, lineNumber, columnNumber);
 
+	if (tk == TOK_NotValid)
+	{
+		std::cerr << "ERROR: found unexcpected symbol [" << (lineNumber + 1) << ", " << (columnNumber + 1) << "]" << std::endl;
+		return false;
+	}
 	if (tk == TOK_Id)
 		resultGraph.SetName(tmpStr, enclosedInDoubleQuotes);
 	// If the token wasn't an ID then it must be an open bracket otherwise we have an error

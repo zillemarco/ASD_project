@@ -6,6 +6,7 @@ Edge::Edge()
 	: GraphElement()
 	, _startNode(nullptr)
 	, _endNode(nullptr)
+	, _addedBySolver(false)
 { }
 
 /**
@@ -17,6 +18,7 @@ Edge::Edge(Node* startNode, Node* endNode)
 	: GraphElement()
 	, _startNode(startNode)
 	, _endNode(endNode)
+	, _addedBySolver(false)
 {
 	if (_startNode == nullptr)
 	{
@@ -38,6 +40,7 @@ Edge::Edge(const Edge& src)
 	: GraphElement(src)
 	, _startNode(nullptr)
 	, _endNode(nullptr)
+	, _addedBySolver(false)
 {
 	Copy(src);
 }
@@ -47,6 +50,7 @@ Edge::Edge(Edge&& src)
 	: GraphElement(src)
 	, _startNode(std::move(src._startNode))
 	, _endNode(std::move(src._endNode))
+	, _addedBySolver(std::move(src._addedBySolver))
 {
 	src._startNode = nullptr;
 	src._endNode = nullptr;
@@ -78,6 +82,7 @@ Edge& Edge::operator=(Edge&& src)
 	{
 		_startNode = std::move(src._startNode);
 		_endNode = std::move(src._endNode);
+		_addedBySolver = std::move(src._addedBySolver);
 
 		src._startNode = nullptr;
 		src._endNode = nullptr;
@@ -93,6 +98,8 @@ void Edge::Copy(const Edge& src)
 
 	if(src._endNode != nullptr)
 		SetEndNode(std::move(src._endNode));
+
+	_addedBySolver = src._addedBySolver;
 }
 
 /** Sets both the start and end nodes of this edge */

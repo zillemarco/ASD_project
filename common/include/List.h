@@ -102,6 +102,8 @@ public:
 	/** Utility struct that can be used to iterate through the elements of the list in both directions */
 	class ConstIterator
 	{
+		friend List;
+
 	public:
 		ConstIterator(const List* list, const ListItem* item, bool isBegin, bool isEnd)
 			: _list(list)
@@ -176,7 +178,7 @@ public:
 		{
 			if (_item == nullptr)
 				throw "List ConstIterator error [operator++]: the item is not valid";
-			_item = item->_next;
+			_item = _item->_next;
 			return *this;
 		}
 		ConstIterator operator++(int)
@@ -193,7 +195,7 @@ public:
 		{
 			if (_item == nullptr)
 				throw "List ConstIterator error [operator--]: the item is not valid";
-			_item = item->_prev;
+			_item = _item->_prev;
 			return *this;
 		}
 		ConstIterator operator--(int)
@@ -211,8 +213,8 @@ public:
 			if (_item == nullptr)
 				throw "List ConstIterator error [operator+=]: the item is not valid";
 
-			while (item != nullptr && n > 0)
-				item = item->_next;
+			while (_item != nullptr && n > 0)
+				_item = _item->_next;
 			return *this;
 		}
 
@@ -221,10 +223,13 @@ public:
 			if (_item == nullptr)
 				throw "List ConstIterator error [operator-=]: the item is not valid";
 
-			while (item != nullptr && n > 0)
-				item = item->_prev;
+			while (_item != nullptr && n > 0)
+				_item = _item->_prev;
 			return *this;
 		}
+
+		/** Returns true if the given list is the same that created the iterator */
+		bool IsOfList(List* list) { return _list == list; }
 
 	private:
 		const List* _list;
@@ -237,6 +242,8 @@ public:
 	/** Utility struct that can be used to iterate through the elements of the list in both directions */
 	class Iterator
 	{
+		friend List;
+
 	public:
 		Iterator(const List* list, ListItem* item, bool isBegin, bool isEnd)
 			: _list(list)
@@ -323,7 +330,7 @@ public:
 		{
 			if (_item == nullptr)
 				throw "List Iterator error [operator++]: the item is not valid";
-			_item = item->_next;
+			_item = _item->_next;
 			return *this;
 		}
 		Iterator operator++(int)
@@ -340,7 +347,7 @@ public:
 		{
 			if (_item == nullptr)
 				throw "List Iterator error [operator--]: the item is not valid";
-			_item = item->_prev;
+			_item = _item->_prev;
 			return *this;
 		}
 		Iterator operator--(int)
@@ -358,8 +365,8 @@ public:
 			if (_item == nullptr)
 				throw "List Iterator error [operator+=]: the item is not valid";
 
-			while (item != nullptr && n > 0)
-				item = item->_next;
+			while (_item != nullptr && n > 0)
+				_item = _item->_next;
 			return *this;
 		}
 
@@ -368,10 +375,13 @@ public:
 			if (_item == nullptr)
 				throw "List Iterator error [operator-=]: the item is not valid";
 
-			while (item != nullptr && n > 0)
-				item = item->_prev;
+			while (_item != nullptr && n > 0)
+				_item = _item->_prev;
 			return *this;
 		}
+
+		/** Returns true if the given list is the same that created the iterator */
+		bool IsOfList(List* list) { return _list == list; }
 
 	private:
 		const List* _list;
@@ -490,7 +500,7 @@ public:
 	* If the index is invalid the value returned is the default specified on the template.
 	*/
 	ConstReferenceType operator[](int index) const { return GetAt(index); }
-
+	
 	/** Equality operator. Calls the equality operator of the element type to see if the lists are the same */
 	friend bool operator==(const List& lhs, const List& rhs)
 	{
@@ -659,7 +669,7 @@ private:
 		itemToRemove->_prev = _freeItemsTail;
 
 		// If there is a free items list tail, change it to point to the item to remove
-		if (_freeItemsTail && _freeItemsTail->_next)
+		if (_freeItemsTail)
 			_freeItemsTail->_next = itemToRemove;
 		_freeItemsTail = itemToRemove;
 
@@ -878,8 +888,6 @@ public:
 			itemsRemoved++;
 		}
 
-		_size -= itemsRemoved;
-
 		return *this;
 	}
 
@@ -905,8 +913,64 @@ public:
 
 		// Move the item to the free items list
 		RemoveElement(itemToRemove, callElementDestructor);
+		
+		return *this;
+	}
 
-		_size--;
+	/**
+	* Makes the iterator point to the next element inside the list and then removes the element pointed by the iterator from the list
+	* Returns the list with the element removed
+	* index: index of the element to remove
+	* callElementDestructor: if true ElementDestructor will be called passing the element which is being removed
+	*/
+	List& Remove(Iterator& it, bool callElementDestructor = false)
+	{
+		if (it._list != this)
+			throw "List error [Remove]: cannot remove an element with an iterator from another list";
+		
+		ListItem* itemToRemove = it._item;
+
+		// Make sure the item to remove is valid
+		if (it._item == nullptr || it._item->_isUsed == false)
+		{
+			std::cerr << "List error [Remove]: cannot remove an invalid item" << std::endl;
+			return *this;
+		}
+
+		// Make the iterator point to the next element
+		it++;
+
+		// Move the item to the free items list
+		RemoveElement(itemToRemove, callElementDestructor);
+		
+		return *this;
+	}
+
+	/**
+	* Makes the iterator point to the next element inside the list and then removes the element pointed by the iterator from the list
+	* Returns the list with the element removed
+	* index: index of the element to remove
+	* callElementDestructor: if true ElementDestructor will be called passing the element which is being removed
+	*/
+	List& Remove(ConstIterator& it, bool callElementDestructor = false)
+	{
+		if (it._list != this)
+			throw "List error [Remove]: cannot remove an element with an iterator from another list";
+
+		ListItem* itemToRemove = it._item;
+
+		// Make sure the item to remove is valid
+		if (it._item == nullptr || it._item->_isUsed == false)
+		{
+			std::cerr << "List error [Remove]: cannot remove an invalid item" << std::endl;
+			return *this;
+		}
+
+		// Make the iterator point to the next element
+		it++;
+
+		// Move the item to the free items list
+		RemoveElement(itemToRemove, callElementDestructor);
 
 		return *this;
 	}
@@ -979,6 +1043,74 @@ public:
 
 		// Return the element
 		return item->_element;
+	}
+	
+	/**
+	* Returns an iterator starting at the given index
+	* index: index of the element to get
+	*/
+	Iterator GetIteratorAt(int index)
+	{
+		// Make sure the index is valid
+		if (index < 0 || index >= _size)
+		{
+			// Output the error to the standard output and throw an exception to stop the execution
+			std::cerr << "List error [GetAt]: invalid index" << std::endl;
+			throw "List error [GetAt]: invalid index";
+		}
+
+		// Find the item to remove
+		ListItem* item = _head;
+		while (index > 0 && item != nullptr && item != _tail)
+		{
+			item = item->_next;
+			index--;
+		}
+
+		// Make sure we have found the item and that it is valid
+		if (index != 0 || item == nullptr || item->_isUsed == false)
+		{
+			// Output the error to the standard output and throw an exception to stop the execution
+			std::cerr << "List error [GetAt]: cannot find the item or the item is not valid" << std::endl;
+			throw "List error [GetAt]: cannot find the item or the item is not valid";
+		}
+
+		// Return the iterator
+		return Iterator(this, item, item != _tail, item == _tail);
+	}
+
+	/**
+	* Returns an iterator starting at the given index
+	* index: index of the element to get
+	*/
+	ConstIterator GetIteratorAt(int index) const
+	{
+		// Make sure the index is valid
+		if (index < 0 || index >= _size)
+		{
+			// Output the error to the standard output and throw an exception to stop the execution
+			std::cerr << "List error [GetAt]: invalid index" << std::endl;
+			throw "List error [GetAt]: invalid index";
+		}
+
+		// Find the item to remove
+		ListItem* item = _head;
+		while (index > 0 && item != nullptr && item != _tail)
+		{
+			item = item->_next;
+			index--;
+		}
+
+		// Make sure we have found the item and that it is valid
+		if (index != 0 || item == nullptr || item->_isUsed == false)
+		{
+			// Output the error to the standard output and throw an exception to stop the execution
+			std::cerr << "List error [GetAt]: cannot find the item or the item is not valid" << std::endl;
+			throw "List error [GetAt]: cannot find the item or the item is not valid";
+		}
+
+		// Return the iterator
+		return ConstIterator(this, item, item != _tail, item == _tail);
 	}
 
 	/**
@@ -1094,12 +1226,12 @@ public:
 
 		return *this;
 	}
-
+	
 	/**
-	* Searched the desired element inside of the list and returns its index
+	* Searches the desired element inside of the list and returns its index
 	* It the element isn't found this returns -1
 	*/
-	int Find(const ValueType& element) const
+	int Find(ConstReferenceType element) const
 	{
 		int index = 0;
 

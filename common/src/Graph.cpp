@@ -116,11 +116,36 @@ Graph& Graph::operator=(Graph&& src)
 /** Utility function to use with copy constructor and assign operator */
 void Graph::Copy(const Graph& src)
 {
-	_edges = src._edges;
-	_nodes = src._nodes;
 	_name = src._name;
 	_encloseNameInDoubleQuotes = src._encloseNameInDoubleQuotes;
 	_graphType = src._graphType;
+
+	// Clear the edges and the nodes
+	_edges.Clear();
+	_nodes.Clear();
+	
+	// Add all the nodes
+	NodeList::ConstIterator nodesIt = src._nodes.Begin();
+	NodeList::ConstIterator nodesEnd = src._nodes.End();
+	for (; nodesIt && nodesIt != nodesEnd; ++nodesIt)
+	{
+		Node node = Node((*nodesIt).GetName(), (*nodesIt).EncloseNameInDoubleQuotes());
+		node.CopyAttributes(*nodesIt);
+
+		_nodes.Add(node);
+	}
+
+	// Add all the edges
+	EdgeList::ConstIterator edgesIt = src._edges.Begin();
+	EdgeList::ConstIterator edgesEnd = src._edges.End();
+	for (; edgesIt && edgesIt != edgesEnd; ++edgesIt)
+	{
+		const std::string& startNodeName = (*edgesIt).GetStartNode()->GetName();
+		const std::string& endNodeName = (*edgesIt).GetEndNode()->GetName();
+
+		Edge* addedEdge = AddEdgeNoCheck(startNodeName, endNodeName);
+		addedEdge->CopyAttributes(*edgesIt);
+	}
 }
 
 /**
@@ -219,6 +244,74 @@ Edge* Graph::AddEdge(const std::string& startNodeName, const std::string& endNod
 	}
 
 	return AddEdge(startNode, endNode);
+}
+
+/**
+* Adds a new edge without doing any check. (Utility for the copy operator and constructor)
+* Returns a pointer to the new edge.
+*/
+Edge* Graph::AddEdgeNoCheck(const std::string& startNodeName, const std::string& endNodeName)
+{
+	// Searche the nodes inside the ones already present
+	Node* startNode = GetNode(startNodeName);
+	Node* endNode = GetNode(endNodeName);
+
+	// Create the new edge and add it to the list of edges of the graph
+	_edges.Add(Edge(startNode, endNode));
+
+	// If the graph is directed add the end node to the adjacency list of the start node
+	if (_graphType == GT_Directed)
+		startNode->AddAdjacentNode(endNode);
+	// If the graph is not directed then both the nodes can be reached through one or the other
+	// so add both to the adjacency list of the other one
+	else
+	{
+		startNode->AddAdjacentNode(endNode);
+		endNode->AddAdjacentNode(startNode);
+	}
+
+	// Return the last edge inside the list which is the one which has been added
+	return &_edges.Back();
+}
+
+/** Removes the edge at the given index from the edges of the graph */
+Graph& Graph::RemoveEdge(int edgeIndex)
+{
+	// Make sure the index is valid
+	if (edgeIndex >= 0 && edgeIndex < _edges.GetSize())
+		return RemoveEdgeWithIterator(_edges.GetIteratorAt(edgeIndex));
+	return *this;
+}
+
+/** Removes the given edge from the edges of the graph */
+Graph& Graph::RemoveEdge(Edge* edge)
+{
+	// Make sure the edge is valid
+	if (edge == nullptr)
+		return *this;
+
+	// Find the edge index and then call the other RemoveEdge method
+	return RemoveEdge(_edges.Find(*edge));
+}
+
+/** Removes the given edge from the edges of the graph */
+Graph& Graph::RemoveEdgeWithIterator(EdgeList::Iterator& it)
+{
+	// Make sure the iterator is valid
+	if (it && it.IsOfList(&_edges))
+	{
+		// Remove the adjacent node from the edge start node
+		(*it).GetStartNode()->RemoveAdjacentNode((*it).GetEndNode());
+
+		// If the graph isn't directed then there is also the adjacent node from the end to the start node to remove
+		if (_graphType != GT_Directed)
+			(*it).GetEndNode()->RemoveAdjacentNode((*it).GetStartNode());
+
+		// Then remove the edge from the edge list
+		_edges.Remove(it);
+	}
+
+	return *this;
 }
 
 /**
@@ -477,6 +570,75 @@ Graph::NodePointersList Graph::GetUnreachableNodes(const std::string& nodeName, 
 }
 
 /**
+* Returns the number of nodes that the given node cannot reach.
+* node: the node from where to start the search
+* setNodesColorToWhiteAtStart: if the caller of this method is not sure that all the nodes are currently white-colord, pass this parameter as true
+* revertAllNodesToPreviousColor: if this is given as true then the color all the nodes of the graph is restored to the one previous to this call. It adds an extra loop through the node's list
+*/
+int Graph::GetUnreachableNodesCount(Node* node, bool setNodesColorToWhiteAtStart, bool revertAllNodesToPreviousColor)
+{
+	int result = 0;
+
+	// Make sure we have a valid node as input
+	if (node == nullptr)
+		return result;
+
+	Node::NodeColor* nodesColor = nullptr;
+
+	NodeList::Iterator it = _nodes.Begin();
+	NodeList::Iterator end = _nodes.End();
+
+	// Create the current nodes color array
+	if (revertAllNodesToPreviousColor)
+	{
+		nodesColor = (Node::NodeColor*)malloc(sizeof(Node::NodeColor) * _nodes.GetSize());
+		memset(nodesColor, 0, sizeof(Node::NodeColor) * _nodes.GetSize());
+	}
+
+	// If we have to restore the node's colors and set them to white at start we do so
+	if (revertAllNodesToPreviousColor || setNodesColorToWhiteAtStart)
+	{
+		for (int index = 0; it && it != end; index++, it++)
+		{
+			// Memorize the current node color to restore is later
+			if (revertAllNodesToPreviousColor)
+				nodesColor[index] = (*it).GetColor();
+
+			if (setNodesColorToWhiteAtStart)
+				(*it).SetColor(Node::NodeColor::NC_White);
+		}
+	}
+
+	// Mark all the nodes that are reachable from the given node
+	MarkReachableNodes(node);
+
+	// Loop through the nodes and see if there are white-colored nodes, which means that they couldn't be reached from the given node
+	it = _nodes.Begin();
+
+	for (; it && it != end; it++)
+	{
+		// If the node is white-colord then it couldn't be reached from the given node
+		if ((*it).GetColor() == Node::NodeColor::NC_White)
+			result++;
+	}
+
+	// Revert the nodes color if the user wanted to
+	if (revertAllNodesToPreviousColor && nodesColor != nullptr)
+	{
+		// Reset the iterator to start over again
+		it = _nodes.Begin();
+
+		for (int index = 0; it && it != end; index++, it++)
+			(*it).SetColor(nodesColor[index]);
+
+		// Free the temporary node's colors array
+		free(nodesColor);
+	}
+
+	return result;
+}
+
+/**
 * This method iterates over the list of adjacent nodes of the given node
 * in a DFS way, checking that they're not gray-colored (in which case there is a cycle so we cannot continue and return false).
 * If they are not gray-colored they're set as so and calls MarkReachableNodes on the node. If all the adjacent nodes are ok the node
@@ -555,4 +717,24 @@ Graph::NodePointersList Graph::GetNonEntrantNodes()
 	}
 
 	return result;
+}
+
+/** Removes all the edges marked as added by ASDProjectSolver */
+Graph& Graph::RemoveEdgesAddedByASDProjectSolver()
+{
+	EdgeList::Iterator it = _edges.Begin();
+	EdgeList::Iterator end = _edges.End();
+
+	// Loop through all the edges
+	while (it && it != end)
+	{
+		// If the edge was added by ASDPorjectSolver remove it. The Remove method moves 'it' forward
+		if ((*it).IsAddedBySolver())
+			RemoveEdgeWithIterator(it);
+		// Otherwise move to the next edge
+		else
+			it++;
+	}
+
+	return *this;
 }
