@@ -126,6 +126,33 @@ public:
 
 		virtual ~ConstIterator() { }
 
+		ConstIterator& operator=(const ConstIterator& src)
+		{
+			if (this != &src)
+			{
+				_list = src._list;
+				_item = src._item;
+				_isBegin = src._isBegin;
+				_isEnd = src._isEnd;
+			}
+			return *this;
+		}
+
+		ConstIterator& operator=(ConstIterator&& src)
+		{
+			if (this != &src)
+			{
+				_list = std::move(src._list);
+				_item = std::move(src._item);
+				_isBegin = std::move(src._isBegin);
+				_isEnd = std::move(src._isEnd);
+
+				src._list = nullptr;
+				src._item = nullptr;
+			}
+			return *this;
+		}
+
 		operator bool() { return (_list != nullptr && _item != nullptr); }
 
 		bool operator==(const ConstIterator& rhs) { return ((this->_list == rhs._list) && (this->_item == rhs._item) && (this->_isBegin == rhs._isBegin) && (this->_isEnd == rhs._isEnd)); }
@@ -233,6 +260,33 @@ public:
 		{ }
 
 		virtual ~Iterator() { }
+
+		Iterator& operator=(const Iterator& src)
+		{
+			if (this != &src)
+			{
+				_list = src._list;
+				_item = src._item;
+				_isBegin = src._isBegin;
+				_isEnd = src._isEnd;
+			}
+			return *this;
+		}
+
+		Iterator& operator=(Iterator&& src)
+		{
+			if (this != &src)
+			{
+				_list = std::move(src._list);
+				_item = std::move(src._item);
+				_isBegin = std::move(src._isBegin);
+				_isEnd = std::move(src._isEnd);
+
+				src._list = nullptr;
+				src._item = nullptr;
+			}
+			return *this;
+		}
 
 		operator bool() { return (_list != nullptr && _item != nullptr); }
 

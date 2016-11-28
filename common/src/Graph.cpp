@@ -276,6 +276,18 @@ Node* Graph::GetNode(int index)
 	return nullptr;
 }
 
+/**
+* Gets the node at the given index from inside the list of nodes of this graph
+* If the given index is not valid returns nullptr
+*/
+const Node* Graph::GetNode(int index) const
+{
+	// Check if the index is valid
+	if (index >= 0 && index < _nodes.GetSize())
+		return &_nodes.GetAt(index);
+	return nullptr;
+}
+
 /** Gets the node that has the given name. If the node isn't found returns nullptr */
 Node* Graph::GetNode(const std::string& nodeName)
 {
@@ -287,8 +299,23 @@ Node* Graph::GetNode(const std::string& nodeName)
 	return nullptr;
 }
 
-/** Applies the DSF algorithm to see if the graph contains cycles inside */
-bool Graph::IsCyclic() const
+/** Gets the node that has the given name. If the node isn't found returns nullptr */
+const Node* Graph::GetNode(const std::string& nodeName) const
+{
+	bool found = false;
+	const Node* result = &_nodes.FindElement(NodeComparator(nodeName), found);
+
+	if (found == true)
+		return result;
+	return nullptr;
+}
+
+/**
+* Applies the DSF algorithm to see if the graph contains cycles inside.
+* setNodesColorToWhiteAtStart: if the caller of this method is not sure that all the nodes are currently white-colord, pass this parameter as true
+* revertAllNodesToPreviousColor: if this is given as true then the color all the nodes of the graph is restored to the one previous to this call. It adds an extra loop through the node's list
+*/
+bool Graph::IsCyclic(bool setNodesColorToWhiteAtStart, bool revertAllNodesToPreviousColor)
 {
 	// Get the values here to save up some function calls
 	int nodesCount = _nodes.GetSize();
@@ -308,11 +335,31 @@ bool Graph::IsCyclic() const
 
 	// Otherwise we need to use DSF to check
 	
-	// Create a copy of this graph to not modify it
-	Graph tmpGraph(*this);
+	Node::NodeColor* nodesColor = nullptr;
+	
+	NodeList::Iterator it = _nodes.Begin();
+	NodeList::Iterator end = _nodes.End();
 
-	NodeList::Iterator it = tmpGraph._nodes.Begin();
-	NodeList::Iterator end = tmpGraph._nodes.End();
+	// Create the current nodes color array
+	if (revertAllNodesToPreviousColor)
+	{
+		nodesColor = (Node::NodeColor*)malloc(sizeof(Node::NodeColor) * _nodes.GetSize());
+		memset(nodesColor, 0, sizeof(Node::NodeColor) * _nodes.GetSize());
+	}
+
+	// If we have to restore the node's colors and set them to white at start we do so
+	if(revertAllNodesToPreviousColor || setNodesColorToWhiteAtStart)
+	{
+		for (int index = 0; it && it != end; index++, it++)
+		{
+			// Memorize the current node color to restore is later
+			if (revertAllNodesToPreviousColor)
+				nodesColor[index] = (*it).GetColor();
+
+			if(setNodesColorToWhiteAtStart)
+				(*it).SetColor(Node::NodeColor::NC_White);
+		}
+	}
 
 	// Loop through the nodes of the graph until we finish them or we find a cycle
 	bool result = false;
@@ -322,15 +369,123 @@ bool Graph::IsCyclic() const
 		if ((*it).GetColor() == Node::NodeColor::NC_White)
 		{
 			// Do the DSF visit to see if we can find a cycle starting from the node 'it'
-			result = IsCyclicUtility(&(*it));
+			// MarkReachableNodes returns false when it finds a cycle
+			result = (MarkReachableNodes(&(*it)) == false);
 		}
+	}
+
+	// Revert the nodes color if the user wanted to
+	if (revertAllNodesToPreviousColor && nodesColor != nullptr)
+	{
+		// Reset the iterator to start over again
+		it = _nodes.Begin();
+
+		for (int index = 0; it && it != end; index++, it++)
+			(*it).SetColor(nodesColor[index]);
+
+		// Free the temporary node's colors array
+		free(nodesColor);
 	}
 
 	// If result is still false the graph doesn't contain ant cycle
 	return result;
 }
 
-bool Graph::IsCyclicUtility(Node* node)
+/**
+* Runs through the entire list of nodes of this graph and returns a list of
+* the nodes that are not reachable from the given node.
+* node: the node from where to start the search
+* setNodesColorToWhiteAtStart: if the caller of this method is not sure that all the nodes are currently white-colord, pass this parameter as true
+* revertAllNodesToPreviousColor: if this is given as true then the color all the nodes of the graph is restored to the one previous to this call. It adds an extra loop through the node's list
+*/
+Graph::NodePointersList Graph::GetUnreachableNodes(Node* node, bool setNodesColorToWhiteAtStart, bool revertAllNodesToPreviousColor)
+{
+	NodePointersList result;
+
+	// Make sure we have a valid node as input
+	if (node == nullptr)
+		result;
+
+	Node::NodeColor* nodesColor = nullptr;
+
+	NodeList::Iterator it = _nodes.Begin();
+	NodeList::Iterator end = _nodes.End();
+
+	// Create the current nodes color array
+	if (revertAllNodesToPreviousColor)
+	{
+		nodesColor = (Node::NodeColor*)malloc(sizeof(Node::NodeColor) * _nodes.GetSize());
+		memset(nodesColor, 0, sizeof(Node::NodeColor) * _nodes.GetSize());
+	}
+	
+	// If we have to restore the node's colors and set them to white at start we do so
+	if (revertAllNodesToPreviousColor || setNodesColorToWhiteAtStart)
+	{
+		for (int index = 0; it && it != end; index++, it++)
+		{
+			// Memorize the current node color to restore is later
+			if (revertAllNodesToPreviousColor)
+				nodesColor[index] = (*it).GetColor();
+
+			if (setNodesColorToWhiteAtStart)
+				(*it).SetColor(Node::NodeColor::NC_White);
+		}
+	}
+	
+	// Mark all the nodes that are reachable from the given node
+	MarkReachableNodes(node);
+
+	// Loop through the nodes and see if there are white-colored nodes, which means that they couldn't be reached from the given node
+	it = _nodes.Begin();
+
+	for (; it && it != end; it++)
+	{
+		// If the node is white-colord then it couldn't be reached from the given node
+		if ((*it).GetColor() == Node::NodeColor::NC_White)
+			result.Add(&(*it));
+	}
+
+	// Revert the nodes color if the user wanted to
+	if (revertAllNodesToPreviousColor && nodesColor != nullptr)
+	{
+		// Reset the iterator to start over again
+		it = _nodes.Begin();
+
+		for (int index = 0; it && it != end; index++, it++)
+			(*it).SetColor(nodesColor[index]);
+
+		// Free the temporary node's colors array
+		free(nodesColor);
+	}
+
+	return result;
+}
+
+/**
+* Runs through the entire list of nodes of this graph and returns a list of
+* the nodes that are not reachable from the given node.
+* nodeName: the name of the node node from where to start the search
+* setNodesColorToWhiteAtStart: if the caller of this method is not sure that all the nodes are currently white-colord, pass this parameter as true
+* revertAllNodesToPreviousColor: if this is given as true then the color all the nodes of the graph is restored to the one previous to this call. It adds an extra loop through the node's list
+*/
+Graph::NodePointersList Graph::GetUnreachableNodes(const std::string& nodeName, bool setNodesColorToWhiteAtStart, bool revertAllNodesToPreviousColor)
+{
+	Node* node = GetNode(nodeName);
+
+	// GetUnreachableNodes checks if the node is not valid
+	return GetUnreachableNodes(node, setNodesColorToWhiteAtStart, revertAllNodesToPreviousColor);
+}
+
+/**
+* This method iterates over the list of adjacent nodes of the given node
+* in a DFS way, checking that they're not gray-colored (in which case there is a cycle so we cannot continue and return false).
+* If they are not gray-colored they're set as so and calls MarkReachableNodes on the node. If all the adjacent nodes are ok the node
+* is set as black-colored.
+* At the end all the nodes of the graph which contains the given node will be either white or black. Is a node is white then it couldn't be reached by the node
+* given in input to the first call to MarkReachableNodes.
+* Returns false if a cycle is found.
+*/
+bool Graph::MarkReachableNodes(Node* node)
 {
 	// Mark the node so that we know it is being processed
 	node->SetColor(Node::NodeColor::NC_Gray);
@@ -342,18 +497,62 @@ bool Graph::IsCyclicUtility(Node* node)
 
 	for (; it && it != end; it++)
 	{
-		// If the node is being processed by the DFS then we have found a loop inside the graph
+		// If the node is being processed by the DFS then we have found a cycle inside the graph
 		if (it->GetColor() == Node::NodeColor::NC_Gray)
-			return true;
+			return false;
 
 		// If the node hasn't been processed we run IsCyclicUtility on it to see if we can find a loop starting from it
-		if (it->GetColor() == Node::NodeColor::NC_White && IsCyclicUtility(*it))
-			return true;
+		if (it->GetColor() == Node::NodeColor::NC_White && MarkReachableNodes(*it) == false)
+			return false;
 	}
 
 	// Mark the node so that we know it has been processed correctly
 	node->SetColor(Node::NodeColor::NC_Black);
 
 	// We haven't found a cycle starting from the given node
-	return false;
+	// so the nodes were marked correctly
+	return true;
+}
+
+/** Returns true if the node hasn't got any entrant edge */
+bool Graph::IsNonEntrantNode(const Node* node) const
+{
+	// Check if the node is valid
+	if (node == nullptr)
+		throw "Graph error [IsNonEntrantNode]: node not valid.";
+
+	EdgeList::ConstIterator it = _edges.Begin();
+	EdgeList::ConstIterator end = _edges.End();
+
+	// Loop through all the edges of the graph.
+	// As soon as we find an edge which end node is the one given as input we have found that the node has an entrant edge
+	for (; it && it != end; it++)
+	{
+		if ((*it).GetEndNode() == node)
+			return false;
+	}
+
+	// There wasn't any edge which has the node given as input as end node so se node is non-entrant
+	return true;
+}
+
+/** Returns a list containing the pointer to all the nodes that don't have any edge or only have entrant edges */
+Graph::NodePointersList Graph::GetNonEntrantNodes()
+{
+	Graph::NodePointersList result;
+
+	NodeList::Iterator it = _nodes.Begin();
+	NodeList::Iterator end = _nodes.End();
+
+	// Loop through the nodes. If a node hasn't got any adjacent node then is doe
+	for (; it && it != end; it++)
+	{
+		// Do this to save one method call
+		Node* node = &(*it);
+
+		if (IsNonEntrantNode(node) == true)
+			result.Add(node);
+	}
+
+	return result;
 }

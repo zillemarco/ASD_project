@@ -1,0 +1,4 @@
+- Controllare che il grafo non abbia cicli
+- Trovare tutti i nodi che o non hanno archi oppure hanno solo archi uscenti (se un nodo ha archi entranti non può essere readice) -> CND
+- Ciclare su CND trovando il nodo ha il numero minimo di nodi non raggiungibili -> sarà il nostro ROOT
+- Aggiungere gli archi mancanti da ROOT ai nodi che non riesce a raggiugnere

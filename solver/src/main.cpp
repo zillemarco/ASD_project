@@ -33,15 +33,27 @@ int main(int argc, char *argv[])
 		dotFileContent = ReadFile(std::cin);
 	}
 
-	Graph result;
-	if (DotParser::Parse(result, dotFileContent))
+	Graph graph;
+	if (DotParser::Parse(graph, dotFileContent))
 	{
-		if(result.IsCyclic())
+		if(graph.IsCyclic())
 			std::cout << "The graph HAS cycles" << std::endl << std::endl;
 		else
 			std::cout << "The graph HAS NOT cycles" << std::endl << std::endl;
+		
+		const Graph::NodePointersList possibleRoots = graph.GetNonEntrantNodes();
 
-		DotWriter::Write(result, std::cout);
+		Graph::NodePointersList::ConstIterator it = possibleRoots.Begin();
+		Graph::NodePointersList::ConstIterator end = possibleRoots.End();
+
+		std::cout << "Nodes that are possible roots:" << std::endl;
+
+		for (; it && it != end; it++)
+			std::cout << "\t- " << it->GetName() << ": add " << graph.GetUnreachableNodes(*it, true).GetSize() << " edges" <<  std::endl;
+
+		std::cout << std::endl;
+
+		DotWriter::Write(graph, std::cout);
 	}
 
 	return 0;
