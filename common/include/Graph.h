@@ -32,7 +32,10 @@ public:
 	/** Constructor for basic initialization */
 	Graph(const std::string& name, bool encloseNameInDoubleQuotes, GraphType type);
 	
-	/** Copy constructor */
+	/**
+	* Copy constructor
+	* NOTE: any best root that was found for the source graph 'src' won't be copied
+	*/
 	Graph(const Graph& src);
 
 	/** Move constructor */
@@ -42,7 +45,10 @@ public:
 	~Graph();
 
 public:
-	/** Assign operator */
+	/**
+	* Assign operator
+	* NOTE: any best root that was found for the source graph 'src' won't be copied
+	*/
 	Graph& operator=(const Graph& src);
 
 	/** Move operator */
@@ -179,6 +185,13 @@ public:
 	/** Returns a list containing the pointer to all the nodes that don't have any entrant edge */
 	NodePointersList GetNonEntrantNodes();
 
+	/**
+	* Given a node as root, computes the best paths that connects the root to all the nodes that it can reach. Works event if there is a cycle
+	* root: the node which is to be used as root
+	* setupInitialDistances: if this is true an additional loop is added at the beginning to setup the initial distances. Pass this to true if you don't know if a previous call to ComputeBestPathsFromRoot was made
+	*/
+	void ComputeBestPathsFromRoot(Node* root, bool setupInitialDistances = false);
+
 protected:
 	/**
 	* This method iterates over the list of adjacent nodes of the given node
@@ -190,6 +203,8 @@ protected:
 	* Returns false if a cycle is found.
 	*/
 	static bool MarkReachableNodes(Node* node);
+
+	void FindBestPath(Node* start, Node* node, int distance);
 
 private:
 	/** Removes all the edges marked as added by ASDProjectSolver */

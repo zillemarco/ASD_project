@@ -105,6 +105,18 @@ public:
 	/** Returns the color of this node for DSF */
 	NodeColor GetColor() const { return _color; }
 
+	/** Sets the value of _distanceFromRoot */
+	void SetDistanceFromRoot(int distance) { _distanceFromRoot = distance; }
+
+	/** Gets the value of _distanceFromRoot */
+	int GetDistanceFromRoot() const { return _distanceFromRoot; }
+
+	/** Sets the value of _edgeForBestPath */
+	void SetEdgeForBestPath(Edge* edge) { _edgeForBestPath = edge; }
+
+	/** Gets the value of _edgeForBestPath */
+	Edge* GetEdgeForBestPath() const { return _edgeForBestPath; }
+
 private:
 	/** Name of the node */
 	std::string _name;
@@ -117,6 +129,12 @@ private:
 
 	/** The color of this node when using DSF */
 	NodeColor _color;
+
+	/** Used to memorize the distance from the root found by ASDProjectSolver */
+	int _distanceFromRoot;
+
+	/** Used to memorize the last edge the minimizes the distance between this node and the root found by ASDProjectSolver */
+	Edge* _edgeForBestPath;
 };
 
 template<> struct ContainerElementDefaultValue<Node> { static Node Value() { return Node(); } };

@@ -12,6 +12,8 @@ Node::Node(const std::string& name, bool encloseNameInDoubleQuotes)
 	, _name(name)
 	, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
 	, _color(NodeColor::NC_White)
+	, _distanceFromRoot(-1)
+	, _edgeForBestPath(nullptr)
 { }
 
 /** Copy constructor */
@@ -21,6 +23,8 @@ Node::Node(const Node& src)
 	, _name(src._name)
 	, _encloseNameInDoubleQuotes(src._encloseNameInDoubleQuotes)
 	, _color(src._color)
+	, _distanceFromRoot(src._distanceFromRoot)
+	, _edgeForBestPath(src._edgeForBestPath)
 { }
 
 /** Move constructor */
@@ -30,6 +34,8 @@ Node::Node(Node&& src)
 	, _name(std::move(src._name))
 	, _encloseNameInDoubleQuotes(std::move(src._encloseNameInDoubleQuotes))
 	, _color(std::move(src._color))
+	, _distanceFromRoot(std::move(src._distanceFromRoot))
+	, _edgeForBestPath(std::move(src._edgeForBestPath))
 { }
 
 /** Destructor */
@@ -60,6 +66,8 @@ Node& Node::operator=(Node&& src)
 		_name = std::move(src._name);
 		_encloseNameInDoubleQuotes = std::move(src._encloseNameInDoubleQuotes);
 		_color = std::move(src._color);
+		_distanceFromRoot = std::move(src._distanceFromRoot);
+		_edgeForBestPath = std::move(src._edgeForBestPath);
 	}
 	return *this;
 }
@@ -71,6 +79,8 @@ void Node::Copy(const Node& src)
 	_name = src._name;
 	_encloseNameInDoubleQuotes = src._encloseNameInDoubleQuotes;
 	_color = src._color;
+	_distanceFromRoot = src._distanceFromRoot;
+	_edgeForBestPath = src._edgeForBestPath;
 }
 
 /**

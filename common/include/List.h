@@ -1290,6 +1290,106 @@ public:
 		// The element wasn't found
 		return -1;
 	}
+	
+	/** Searches the desired element inside of the list and returns an iterator to it */
+	Iterator FindIterator(ConstReferenceType element)
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_element != element && item->_isUsed)
+		{
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// If the item is valid and it used then we have found the element we are looking for
+		// so return the index
+		if (item != nullptr && item->_isUsed)
+			return Iterator(this, nullptr, false, false);
+
+		// Return the iterator
+		return Iterator(this, item, item != _tail, item == _tail);
+	}
+
+	/**
+	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.
+	* comparator: function object that must implement a member function compliant to the below specifications
+	*
+	* Comparator member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Comparator> Iterator FindIterator(Comparator comparator)
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure)
+		while (item != nullptr && item->_isUsed && comparator(item->_element) == false)
+		{
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// If the item is valid and it used then we have found the element we are looking for
+		// so return the index
+		if (item != nullptr && item->_isUsed)
+			return Iterator(this, nullptr, false, false);
+
+		// The element wasn't found
+		return Iterator(this, item, item != _tail, item == _tail);
+	}
+
+	/** Searches the desired element inside of the list and returns an iterator to it */
+	ConstIterator FindIterator(ConstReferenceType element) const
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure) 
+		while (item != nullptr && item->_element != element && item->_isUsed)
+		{
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// If the item is valid and it used then we have found the element we are looking for
+		// so return the index
+		if (item != nullptr && item->_isUsed)
+			return ConstIterator(this, nullptr, false, false);
+
+		// Return the iterator
+		return ConstIterator(this, item, item != _tail, item == _tail);
+	}
+
+	/**
+	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.
+	* comparator: function object that must implement a member function compliant to the below specifications
+	*
+	* Comparator member function signature specifications:
+	*	bool operator()([ValueType | ReferenceType | ConstReferenceType] element);
+	*/
+	template<typename Comparator> ConstIterator FindIterator(Comparator comparator) const
+	{
+		ListItem* item = _head;
+
+		// Loop until the item is not valid, the element contained by the item is not the one we are looking for
+		// the item is not used (should never happen, but to be sure)
+		while (item != nullptr && item->_isUsed && comparator(item->_element) == false)
+		{
+			// Move to the next item
+			item = item->_next;
+		}
+
+		// If the item is valid and it used then we have found the element we are looking for
+		// so return the index
+		if (item != nullptr && item->_isUsed)
+			return ConstIterator(this, nullptr, false, false);
+
+		// The element wasn't found
+		return ConstIterator(this, item, item != _tail, item == _tail);
+	}
 
 	/**
 	* This method searches for an element inside the list using a given comparator to see if an element is the one the user is looking for.

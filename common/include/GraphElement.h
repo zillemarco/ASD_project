@@ -92,6 +92,9 @@ public:
 	/** Returns the list of the attributes of this graph element */
 	const AttributeList& GetAttributes() const { return _attributes; }
 
+	/** Removes the attribute with the given name from the list of attributes of this graph element */
+	GraphElement& RemoveAttribute(const std::string& attributeName);
+
 	/** Copies the attributes from the source graph elemento into this one */
 	void CopyAttributes(const GraphElement& src) { _attributes = src._attributes; }
 	

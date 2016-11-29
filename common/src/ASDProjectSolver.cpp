@@ -34,6 +34,8 @@ bool ASDProjectSolver::ProcessData(Graph& result, const std::string& dotFileCont
 
 	root->SetAttribute("label", "root = " + root->GetName() + "; |E| - |E'| = " + std::to_string(addedEdges), false, true);
 
+	result.ComputeBestPathsFromRoot(root);
+
 	return true;
 }
 
@@ -87,8 +89,9 @@ Node* ASDProjectSolver::FindBestRoot(Graph& graph, int& addedEdges)
 	if (bestAddedEdges == -1)
 		return false;
 	
-	// Copy the best graph to the result and return true
-	graph = bestGraph;
+	// Move the best graph to the result and return true
+	// Using std::move to save up some loops inside the graph copy ctor
+	graph = std::move(bestGraph);
 	addedEdges = bestAddedEdges;
 
 	return graph.GetNode(bestRootName);
@@ -144,7 +147,7 @@ int ASDProjectSolver::AddEdgesToRoot(Graph& graph, Node* root, Graph::NodePointe
 			return -1;
 		
 		// Add the edge with the best node (the one that minimizes the unreachable nodes from the root)
-		Edge* addedEdge = graph.AddEdge(root, *it);
+		Edge* addedEdge = graph.AddEdge(root, bestNodeToAdd);
 
 		// Add the red colored attribute to the edge as the problem says
 		addedEdge->SetAttribute("color", "red", false, false);

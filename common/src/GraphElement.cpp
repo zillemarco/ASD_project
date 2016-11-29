@@ -115,3 +115,16 @@ const std::string& GraphElement::GetAttribute(const std::string& attributeName, 
 		return attribute._value;
 	return alternative;
 }
+
+/** Removes the attribute with the given name from the list of attributes of this graph element */
+GraphElement& GraphElement::RemoveAttribute(const std::string& attributeName)
+{
+	// Try to find the attribute
+	AttributeList::Iterator it = _attributes.FindIterator(AttributeFinder(attributeName));
+
+	// If the attribute was found remove it from the list
+	if (it)
+		_attributes.Remove(it);
+
+	return *this;
+}

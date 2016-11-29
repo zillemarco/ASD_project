@@ -33,6 +33,34 @@ struct EdgeComparator
 	Graph::GraphType _graphType;
 };
 
+/** Comparator used to check if an edge with the given start and end nodes exists */
+struct EdgeComparatorWithNodesPointer
+{
+	EdgeComparatorWithNodesPointer(const Node* startNode, const Node* endNode, Graph::GraphType graphType)
+		: _startNode(startNode)
+		, _endNode(endNode)
+		, _graphType(graphType)
+	{ }
+
+	inline bool operator()(const Edge& edge)
+	{
+		// If the graph is directed two edges as equal only if the start and end node are the same
+		if (_graphType == Graph::GT_Directed)
+			return edge.GetStartNode() == _startNode && edge.GetEndNode() == _endNode;
+		// If the graph is not directed there start and end node don't exist so two edges are equal
+		// also if the start and end node are the same
+		else
+		{
+			return (edge.GetStartNode() == _startNode && edge.GetEndNode() == _endNode) || (edge.GetStartNode() == _endNode && edge.GetEndNode() == _startNode);
+		}
+		return false;
+	}
+
+	const Node* _startNode;
+	const Node* _endNode;
+	Graph::GraphType _graphType;
+};
+
 /** Comparator used by Graph::GetNode to get a node from a given name */
 struct NodeComparator
 {
@@ -717,6 +745,113 @@ Graph::NodePointersList Graph::GetNonEntrantNodes()
 	}
 
 	return result;
+}
+
+/**
+* Given a node as root, computes the best paths that connects the root to all the nodes that it can reach. Works event if there is a cycle
+* root: the node which is to be used as root
+* setupInitialDistances: if this is true an additional loop is added at the beginning to setup the initial distances. Pass this to true if you don't know if a previous call to ComputeBestPathsFromRoot was made
+*/
+void Graph::ComputeBestPathsFromRoot(Node* root, bool setupInitialDistances)
+{
+	// Make sure the given root is valid
+	if (root == nullptr)
+		return;
+
+	if (setupInitialDistances)
+	{
+		NodeList::Iterator it = _nodes.Begin();
+		NodeList::Iterator end = _nodes.End();
+
+		// Loop through the nodes. If a node hasn't got any adjacent node then is doe
+		for (; it && it != end; it++)
+			(*it).SetDistanceFromRoot(-1);
+	}
+
+	// The root has distance 0 to itself
+	root->SetDistanceFromRoot(0);
+
+	const List<Node*>& adjacentNodes = root->GetAdjacentNodes();
+
+	List<Node*>::ConstIterator adjacentNodesIt = adjacentNodes.Begin();
+	List<Node*>::ConstIterator adjacentNodesEnd = adjacentNodes.End();
+
+	for (; adjacentNodesIt && adjacentNodesIt != adjacentNodesEnd; ++adjacentNodesIt)
+		FindBestPath(root, *adjacentNodesIt, 1);
+}
+
+void Graph::FindBestPath(Node* start, Node* node, int distance)
+{
+	// Make sure the nodes are valid
+	if (start == nullptr || node == nullptr)
+		return;
+
+	if (node->GetDistanceFromRoot() == -1)
+	{
+		// Find the edge that connects start with node
+		bool found = false;
+		Edge* connectingEdge = &_edges.FindElement(EdgeComparatorWithNodesPointer(start, node, _graphType), found);
+
+		// If the edge was found set it as the best edge for node and set the node's distance from the root
+		if (found)
+		{
+			connectingEdge->SetAttribute("style", "dotted", false, false);
+
+			node->SetEdgeForBestPath(connectingEdge);
+			node->SetDistanceFromRoot(distance);
+		}
+
+		// Iterator over the adjacent nodes of node to adjust the distances from them to the root
+		const List<Node*>& adjacentNodes = node->GetAdjacentNodes();
+
+		List<Node*>::ConstIterator adjacentNodesIt = adjacentNodes.Begin();
+		List<Node*>::ConstIterator adjacentNodesEnd = adjacentNodes.End();
+
+		for (; adjacentNodesIt && adjacentNodesIt != adjacentNodesEnd; ++adjacentNodesIt)
+			FindBestPath(node, *adjacentNodesIt, distance + 1);
+	}
+	else if (distance < node->GetDistanceFromRoot())
+	{
+		// Find the edge that connects start with node
+		bool found = false;
+		Edge* connectingEdge = &_edges.FindElement(EdgeComparatorWithNodesPointer(start, node, _graphType), found);
+
+		// If the edge was found set it as the best edge for node and set the node's distance from the root
+		if (found)
+		{
+			// If a node aready had a best edge and it is different from the current one, remove the dotted mark from that edge
+			Edge* currentEdgeForBestPath = node->GetEdgeForBestPath();
+			
+			if (currentEdgeForBestPath != nullptr)
+			{
+				// If the edge that connects start with node is different then remove the dotted mark from that edge,
+				// add the dotted mark to the new edge and set it as the best edge from start to node
+				if (currentEdgeForBestPath != connectingEdge)
+				{
+					currentEdgeForBestPath->RemoveAttribute("style");
+					connectingEdge->SetAttribute("style", "dotted", false, false);
+
+					node->SetEdgeForBestPath(connectingEdge);
+				}
+			}
+			else
+			{
+				node->SetEdgeForBestPath(connectingEdge);
+				connectingEdge->SetAttribute("style", "dotted", false, false);
+			}
+
+			node->SetDistanceFromRoot(distance);
+
+			// Iterator over the adjacent nodes of node to adjust the distances from them to the root
+			const List<Node*>& adjacentNodes = node->GetAdjacentNodes();
+
+			List<Node*>::ConstIterator adjacentNodesIt = adjacentNodes.Begin();
+			List<Node*>::ConstIterator adjacentNodesEnd = adjacentNodes.End();
+
+			for (; adjacentNodesIt && adjacentNodesIt != adjacentNodesEnd; ++adjacentNodesIt)
+				FindBestPath(node, *adjacentNodesIt, distance + 1);
+		}
+	}
 }
 
 /** Removes all the edges marked as added by ASDProjectSolver */
