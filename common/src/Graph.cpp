@@ -108,8 +108,8 @@ Graph::Graph(Graph&& src)
 /** Destructor */
 Graph::~Graph()
 {
-	_edges.Clear(0, true);
-	_nodes.Clear(0, true);
+	_edges.Clear();
+	_nodes.Clear();
 	_name = "";
 	_graphType = GT_NotValid;
 }
@@ -777,10 +777,17 @@ void Graph::ComputeBestPathsFromRoot(Node* root, bool setupInitialDistances)
 	List<Node*>::ConstIterator adjacentNodesEnd = adjacentNodes.End();
 
 	for (; adjacentNodesIt && adjacentNodesIt != adjacentNodesEnd; ++adjacentNodesIt)
-		FindBestPath(root, *adjacentNodesIt, 1);
+		FindBestPath(root, root, *adjacentNodesIt, 1);
 }
 
-void Graph::FindBestPath(Node* start, Node* node, int distance)
+/**
+* Traverse the graph updating the best path that connects the node 'start' to the node 'node'
+* root: the root from where the path started
+* start: the node previous to 'node' inside the path
+* node: the node we are checking to see if we find a path shorter then the one it currently has
+* distance: the distance from the node 'start' from the root node
+*/
+void Graph::FindBestPath(const Node* root, Node* start, Node* node, int distance)
 {
 	// Make sure the nodes are valid
 	if (start == nullptr || node == nullptr)
@@ -795,10 +802,13 @@ void Graph::FindBestPath(Node* start, Node* node, int distance)
 		// If the edge was found set it as the best edge for node and set the node's distance from the root
 		if (found)
 		{
-			connectingEdge->SetAttribute("style", "dotted", false, false);
+			connectingEdge->SetAttribute("style", "dashed", false, false);
 
 			node->SetEdgeForBestPath(connectingEdge);
 			node->SetDistanceFromRoot(distance);
+
+			// Set the label for the node
+			node->SetAttribute("label", "d(" + root->GetName() + "," + node->GetName() + " = " + std::to_string(distance) + ")", false, true);
 		}
 
 		// Iterator over the adjacent nodes of node to adjust the distances from them to the root
@@ -808,7 +818,7 @@ void Graph::FindBestPath(Node* start, Node* node, int distance)
 		List<Node*>::ConstIterator adjacentNodesEnd = adjacentNodes.End();
 
 		for (; adjacentNodesIt && adjacentNodesIt != adjacentNodesEnd; ++adjacentNodesIt)
-			FindBestPath(node, *adjacentNodesIt, distance + 1);
+			FindBestPath(root, node, *adjacentNodesIt, distance + 1);
 	}
 	else if (distance < node->GetDistanceFromRoot())
 	{
@@ -819,17 +829,17 @@ void Graph::FindBestPath(Node* start, Node* node, int distance)
 		// If the edge was found set it as the best edge for node and set the node's distance from the root
 		if (found)
 		{
-			// If a node aready had a best edge and it is different from the current one, remove the dotted mark from that edge
+			// If a node aready had a best edge and it is different from the current one, remove the dashed mark from that edge
 			Edge* currentEdgeForBestPath = node->GetEdgeForBestPath();
 			
 			if (currentEdgeForBestPath != nullptr)
 			{
-				// If the edge that connects start with node is different then remove the dotted mark from that edge,
-				// add the dotted mark to the new edge and set it as the best edge from start to node
+				// If the edge that connects start with node is different then remove the dashed mark from that edge,
+				// add the dashed mark to the new edge and set it as the best edge from start to node
 				if (currentEdgeForBestPath != connectingEdge)
 				{
 					currentEdgeForBestPath->RemoveAttribute("style");
-					connectingEdge->SetAttribute("style", "dotted", false, false);
+					connectingEdge->SetAttribute("style", "dashed", false, false);
 
 					node->SetEdgeForBestPath(connectingEdge);
 				}
@@ -837,10 +847,13 @@ void Graph::FindBestPath(Node* start, Node* node, int distance)
 			else
 			{
 				node->SetEdgeForBestPath(connectingEdge);
-				connectingEdge->SetAttribute("style", "dotted", false, false);
+				connectingEdge->SetAttribute("style", "dashed", false, false);
 			}
 
 			node->SetDistanceFromRoot(distance);
+
+			// Set the label for the node
+			node->SetAttribute("label", "d(" + root->GetName() + "," + node->GetName() + " = " + std::to_string(distance) + ")", false, true);
 
 			// Iterator over the adjacent nodes of node to adjust the distances from them to the root
 			const List<Node*>& adjacentNodes = node->GetAdjacentNodes();
@@ -849,7 +862,7 @@ void Graph::FindBestPath(Node* start, Node* node, int distance)
 			List<Node*>::ConstIterator adjacentNodesEnd = adjacentNodes.End();
 
 			for (; adjacentNodesIt && adjacentNodesIt != adjacentNodesEnd; ++adjacentNodesIt)
-				FindBestPath(node, *adjacentNodesIt, distance + 1);
+				FindBestPath(root, node, *adjacentNodesIt, distance + 1);
 		}
 	}
 }

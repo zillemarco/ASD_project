@@ -1,6 +1,22 @@
 #include "Edge.h"
 #include "Node.h"
 
+/** Comparator used by Node::RemoveAdjacentNode to check if an adjacent node exists inside the list of adjacent nodes of a node */
+struct AdjacentNodeComparator
+{
+	AdjacentNodeComparator(const Node* adjacentNode)
+		: _adjacentNode(adjacentNode)
+	{ }
+
+	inline bool operator()(const Node* node)
+	{
+		if (_adjacentNode == node)
+			return true;
+		return false;
+	}
+
+	const Node* _adjacentNode;
+};
 /** Default constructor */
 Node::Node()
 	: GraphElement()
@@ -98,7 +114,13 @@ Node& Node::AddAdjacentNode(Node* adjacentNode)
 /** Removes the given node from the list of adjacent nodes of this node */
 Node& Node::RemoveAdjacentNode(const Node* adjacentNode)
 {
-	_adjacentNodes.Remove((Node* const&)adjacentNode);
+	// Find the adjacent node inside the list of adjacent nodes of this node
+	List<Node*>::Iterator it = _adjacentNodes.FindIterator(AdjacentNodeComparator(adjacentNode));
+
+	// If the adjacent node was found remove it
+	if(it)
+		_adjacentNodes.Remove(it);
+
 	return *this;
 }
 

@@ -204,7 +204,14 @@ protected:
 	*/
 	static bool MarkReachableNodes(Node* node);
 
-	void FindBestPath(Node* start, Node* node, int distance);
+	/**
+	* Traverse the graph updating the best path that connects the node 'start' to the node 'node'
+	* root: the root from where the path started
+	* start: the node previous to 'node' inside the path
+	* node: the node we are checking to see if we find a path shorter then the one it currently has
+	* distance: the distance from the node 'start' from the root node
+	*/
+	void FindBestPath(const Node* root, Node* start, Node* node, int distance);
 
 private:
 	/** Removes all the edges marked as added by ASDProjectSolver */

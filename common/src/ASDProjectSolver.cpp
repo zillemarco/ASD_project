@@ -11,7 +11,12 @@ bool ASDProjectSolver::ProcessData(Graph& result, const std::string& dotFileCont
 	// Parse the DOT file to get the starting graph
 	if (DotParser::Parse(result, dotFileContent) == false)
 		return false;
+	return ProcessData(result);
+}
 
+/** Process the given graph and modifies it to solve the project */
+bool ASDProjectSolver::ProcessData(Graph& result)
+{
 	// Rename the graph
 	result.SetName("out_" + result.GetName(), result.EncloseNameInDoubleQuotes());
 
@@ -21,7 +26,7 @@ bool ASDProjectSolver::ProcessData(Graph& result, const std::string& dotFileCont
 		std::cout << "ERROR: the graph contains cycles!";
 		return false;
 	}
-	
+
 	// Loop through the possible roots of the graph to find the one that adds the least amount of edges
 	Node* root = nullptr;
 	int addedEdges = 0;
@@ -32,8 +37,10 @@ bool ASDProjectSolver::ProcessData(Graph& result, const std::string& dotFileCont
 		return false;
 	}
 
+	// Label the root to show the number of added edges
 	root->SetAttribute("label", "root = " + root->GetName() + "; |E| - |E'| = " + std::to_string(addedEdges), false, true);
 
+	// Compute the best paths from the root
 	result.ComputeBestPathsFromRoot(root);
 
 	return true;
@@ -91,7 +98,7 @@ Node* ASDProjectSolver::FindBestRoot(Graph& graph, int& addedEdges)
 	
 	// Move the best graph to the result and return true
 	// Using std::move to save up some loops inside the graph copy ctor
-	graph = std::move(bestGraph);
+	graph = bestGraph;
 	addedEdges = bestAddedEdges;
 
 	return graph.GetNode(bestRootName);
@@ -117,6 +124,9 @@ int ASDProjectSolver::AddEdgesToRoot(Graph& graph, Node* root, Graph::NodePointe
 			// Make sure the edge was successfully added
 			if (addedEdge)
 			{
+				// Mark the edge as added by the ASDProjectSolver
+				addedEdge->SetAddedBySolver(true);
+
 				// Check if the addition of the edge has created any cycle, in which case remove the edge
 				if (graph.IsCyclic(true) == false)
 				{
@@ -151,6 +161,9 @@ int ASDProjectSolver::AddEdgesToRoot(Graph& graph, Node* root, Graph::NodePointe
 
 		// Add the red colored attribute to the edge as the problem says
 		addedEdge->SetAttribute("color", "red", false, false);
+
+		// Mark the edge as added by the ASDProjectSolver
+		addedEdge->SetAddedBySolver(true);
 
 		// Increment the number of added edges
 		addedEdgesCount++;

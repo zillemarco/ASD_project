@@ -213,19 +213,29 @@ public:
 			if (_item == nullptr)
 				throw "List ConstIterator error [operator+=]: the item is not valid";
 
-			while (_item != nullptr && n > 0)
+			while (_item != nullptr && n-- > 0)
 				_item = _item->_next;
 			return *this;
 		}
-
 		ConstIterator& operator-=(int n)
 		{
 			if (_item == nullptr)
 				throw "List ConstIterator error [operator-=]: the item is not valid";
 
-			while (_item != nullptr && n > 0)
+			while (_item != nullptr && n-- > 0)
 				_item = _item->_prev;
 			return *this;
+		}
+
+		friend ConstIterator operator+(ConstIterator it, int n)
+		{
+			it += n;
+			return it;
+		}
+		friend ConstIterator operator-(ConstIterator it, int n)
+		{
+			it -= n;
+			return it;
 		}
 
 		/** Returns true if the given list is the same that created the iterator */
@@ -365,19 +375,29 @@ public:
 			if (_item == nullptr)
 				throw "List Iterator error [operator+=]: the item is not valid";
 
-			while (_item != nullptr && n > 0)
+			while (_item != nullptr && n-- > 0)
 				_item = _item->_next;
 			return *this;
 		}
-
 		Iterator& operator-=(int n)
 		{
 			if (_item == nullptr)
 				throw "List Iterator error [operator-=]: the item is not valid";
 
-			while (_item != nullptr && n > 0)
+			while (_item != nullptr && n-- > 0)
 				_item = _item->_prev;
 			return *this;
+		}
+
+		friend Iterator operator+(Iterator it, int n)
+		{
+			it += n;
+			return it;
+		}
+		friend Iterator operator-(Iterator it, int n)
+		{
+			it -= n;
+			return it;
 		}
 
 		/** Returns true if the given list is the same that created the iterator */
@@ -541,17 +561,19 @@ private:
 		if ((src._head == nullptr && src._freeItemsHead == nullptr) || src._capacity <= 0)
 			return;
 
-		if (_head != nullptr || _freeItemsHead != nullptr)
-		{
-			// Clear the list and makes sure that this lists capacity matches the source list capacity
-			Clear(src._capacity, CallElementDestructorOnListCopy);
-		}
-		else
-		{
-			// If the heads are nullptr then Copy is being called from the copy constructor since otherwise they are ALWAYS not nullptr
-			// Call grow to initialize the pointers and have the same capacity as the source
-			Grow(src._capacity);
-		}
+		Clear(src._capacity, CallElementDestructorOnListCopy);
+
+		//if (_head != nullptr || _freeItemsHead != nullptr)
+		//{
+		//	// Clear the list and makes sure that this lists capacity matches the source list capacity
+		//	Clear(src._capacity, CallElementDestructorOnListCopy);
+		//}
+		//else
+		//{
+		//	// If the heads are nullptr then Copy is being called from the copy constructor since otherwise they are ALWAYS not nullptr
+		//	// Call grow to initialize the pointers and have the same capacity as the source
+		//	Grow(src._capacity);
+		//}
 
 		// Copy the elements from the source list
 		// Loop only until the item is valid or the item isn't used since the
@@ -1123,6 +1145,13 @@ public:
 	*/
 	List& Clear(int elementsToKeep = 0, bool callElementDestructor = false)
 	{
+		int oldCapacity = _capacity;
+		bool freeItemsHeadWasNullptr = _freeItemsHead == nullptr;
+		bool freeItemsTailWasNullptr = _freeItemsTail == nullptr;
+		bool freeItemsHeadPrevIsValid = _freeItemsHead != nullptr && _freeItemsHead->_prev && _freeItemsHead->_prev->_next != nullptr;
+		bool grown = _capacity < elementsToKeep;
+		bool keepElements = elementsToKeep > 0;
+
 		if (_capacity > 0)
 		{
 			// Only if _size is more than 0 then there are used items to put at the end of the free list
@@ -1148,11 +1177,20 @@ public:
 						_tail = nullptr;
 
 					_head = _head->_next;
+
+					_freeItemsHead->_next = nullptr;
+					_freeItemsTail->_next = nullptr;
 				}
 
 				// Check again if _head is valid since the previous code could have set it to nullptr if there was only one valid element inside the list
 				if (_head)
 				{
+					if (freeItemsHeadWasNullptr == false)
+					{
+						int j = 0;
+						j++;
+					}
+
 					if (_tail == nullptr)
 					{
 						std::cerr << "List error [Clear]: _tail is nullptr but _head is not. Invalid list" << std::endl;
@@ -1172,12 +1210,16 @@ public:
 			}
 		}
 
+		freeItemsHeadPrevIsValid = _freeItemsHead != nullptr && _freeItemsHead->_prev && _freeItemsHead->_prev->_next != nullptr;
+
 		// If the list cannot hold the number of elements that the calee wants to keep, grow the list to fill the gap
 		if (_capacity < elementsToKeep)
 			Grow(elementsToKeep - _capacity);
 		// Otherwise set the capacity of the list equals to the number of elements to keep
 		else
 			_capacity = elementsToKeep;
+
+		freeItemsHeadPrevIsValid = _freeItemsHead != nullptr && _freeItemsHead->_prev && _freeItemsHead->_prev->_next != nullptr;
 
 		ListItem* currentItem = _freeItemsHead;
 		ElementDtor dtor;
@@ -1194,32 +1236,53 @@ public:
 			elementsToKeep--;
 		}
 
-		// Set _freeItemsTail as the last item on the free items list
-		if(currentItem)
-			_freeItemsTail = currentItem->_prev;
+		freeItemsHeadPrevIsValid = _freeItemsHead != nullptr && _freeItemsHead->_prev && _freeItemsHead->_prev->_next != nullptr;
 
-		// Delete all the remaining elements
-		while (currentItem != nullptr)
+		// If we have elements to delete from the empty list
+		if (currentItem)
 		{
-			ListItem* nextItem = currentItem->_next;
+			// If we are deleting the rest of the free items and we start from the free items list head
+			// we will be deleting all the free list items so set both the free list items head and tail to nullptr
+			if (currentItem == _freeItemsHead)
+			{
+				_freeItemsHead = nullptr;
+				_freeItemsTail = nullptr;
+			}
+			else
+			{
+				// Set _freeItemsTail as the last item on the free items list
+				_freeItemsTail = currentItem->_prev;
+			}
 
-			// Ensure that currentItem previous item doesn't point to currentItem otherwise there
-			// will be errors because _freeItemsTail would have _next to point to dirty memory
-			if (currentItem->_prev)
-				currentItem->_prev->_next = nullptr;
+			int cycles = 0;
 
-			// Call ElementDtor only if the item points to a valid element
-			if (currentItem->_isUsed && callElementDestructor)
-				dtor(currentItem->_element);
+			// Delete all the remaining elements
+			while (currentItem != nullptr)
+			{
+				ListItem* nextItem = currentItem->_next;
 
-			delete currentItem;
-			currentItem = nextItem;
+				// Ensure that currentItem previous item doesn't point to currentItem otherwise there
+				// will be errors because _freeItemsTail would have _next to point to dirty memory
+				if (currentItem->_prev)
+					currentItem->_prev->_next = nullptr;
+
+				// Call ElementDtor only if the item points to a valid element
+				if (currentItem->_isUsed && callElementDestructor)
+					dtor(currentItem->_element);
+
+				delete currentItem;
+				currentItem = nextItem;
+
+				freeItemsHeadPrevIsValid = _freeItemsHead != nullptr && _freeItemsHead->_prev && _freeItemsHead->_prev->_next != nullptr;
+
+				cycles++;
+			}
+
+			// If the tail is nullptr then we have cleared all the list
+			// so set _freeItemsHead to nullptr too
+			if (_freeItemsTail == nullptr)
+				_freeItemsHead = nullptr;
 		}
-
-		// If the tail is nullptr then we have cleared all the list
-		// se set _freeItemsHead to nullptr too
-		if(_freeItemsTail == nullptr)
-			_freeItemsHead = nullptr;
 		
 		// Set the size to 0 to mark the list as empty
 		_size = 0;
@@ -1307,10 +1370,10 @@ public:
 		// If the item is valid and it used then we have found the element we are looking for
 		// so return the index
 		if (item != nullptr && item->_isUsed)
-			return Iterator(this, nullptr, false, false);
+			return Iterator(this, item, item != _tail, item == _tail);
 
 		// Return the iterator
-		return Iterator(this, item, item != _tail, item == _tail);
+		return Iterator(this, nullptr, false, false);
 	}
 
 	/**
@@ -1335,10 +1398,10 @@ public:
 		// If the item is valid and it used then we have found the element we are looking for
 		// so return the index
 		if (item != nullptr && item->_isUsed)
-			return Iterator(this, nullptr, false, false);
+			return Iterator(this, item, item != _tail, item == _tail);
 
 		// The element wasn't found
-		return Iterator(this, item, item != _tail, item == _tail);
+		return Iterator(this, nullptr, false, false);
 	}
 
 	/** Searches the desired element inside of the list and returns an iterator to it */
@@ -1357,10 +1420,10 @@ public:
 		// If the item is valid and it used then we have found the element we are looking for
 		// so return the index
 		if (item != nullptr && item->_isUsed)
-			return ConstIterator(this, nullptr, false, false);
+			return ConstIterator(this, item, item != _tail, item == _tail);
 
 		// Return the iterator
-		return ConstIterator(this, item, item != _tail, item == _tail);
+		return ConstIterator(this, nullptr, false, false);
 	}
 
 	/**
@@ -1385,10 +1448,10 @@ public:
 		// If the item is valid and it used then we have found the element we are looking for
 		// so return the index
 		if (item != nullptr && item->_isUsed)
-			return ConstIterator(this, nullptr, false, false);
+			return ConstIterator(this, item, item != _tail, item == _tail);
 
 		// The element wasn't found
-		return ConstIterator(this, item, item != _tail, item == _tail);
+		return ConstIterator(this, nullptr, false, false);
 	}
 
 	/**
