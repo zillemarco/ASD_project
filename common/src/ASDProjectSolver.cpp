@@ -8,15 +8,20 @@ bool ASDProjectSolver::ProcessData(Graph& result, int argc, char *argv[])
 
 bool ASDProjectSolver::ProcessData(Graph& result, const std::string& dotFileContent)
 {
+	Graph inputGraph;
+
 	// Parse the DOT file to get the starting graph
-	if (DotParser::Parse(result, dotFileContent) == false)
+	if (DotParser::Parse(inputGraph, dotFileContent) == false)
 		return false;
-	return ProcessData(result);
+
+	return ProcessData(inputGraph, result);
 }
 
 /** Process the given graph and modifies it to solve the project */
-bool ASDProjectSolver::ProcessData(Graph& result)
+bool ASDProjectSolver::ProcessData(const Graph& inputGraph, Graph& result)
 {
+	result = inputGraph;
+
 	// Rename the graph
 	result.SetName("out_" + result.GetName(), result.EncloseNameInDoubleQuotes());
 

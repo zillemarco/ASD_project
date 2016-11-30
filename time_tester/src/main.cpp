@@ -1,23 +1,29 @@
 #include "Graph.h"
 #include "RandomGraphGenerator.h"
+#include "RandomGenerator.h"
 #include "ASDProjectSolver.h"
+#include "ASDProjectTimeTester.h"
 #include "DotWriter.h"
 
 #include <fstream>
+#include <ctime>
 
 void PrintUsage();
-bool ParseArgs(int argc, char *argv[], int& numberOfGraphs, int& numberOfNodes, int& numberOfEdges, int& edgeChance, std::string& generatedGraphsFolderPath, std::string& solutionGraphsFolderPath);
+bool ParseArgs(int argc, char *argv[], int& numberOfGraphs, int& numberOfNodes, int& edgeChance, double& seed, double& delta, int& iterations, double& distribution, std::string& generatedGraphsFolderPath, std::string& solutionGraphsFolderPath);
 
 int main(int argc, char *argv[])
 {
-	int numberOfGraphs;
-	int numberOfNodes;
-	int numberOfEdges;
-	int edgeChance;
-	std::string generatedGraphsFolderPath;
-	std::string solutionGraphsFolderPath;
+	int numberOfGraphs = 1;
+	int numberOfNodes = 10;
+	int edgeChance = 15;
+	double seed = 0;
+	double delta = 0.2;
+	int iterations = 7;
+	double distribution = 1.96;
+	std::string generatedGraphsFolderPath = "";
+	std::string solutionGraphsFolderPath = "";
 
-	if (!ParseArgs(argc, argv, numberOfGraphs, numberOfNodes, numberOfEdges, edgeChance, generatedGraphsFolderPath, solutionGraphsFolderPath))
+	if (!ParseArgs(argc, argv, numberOfGraphs, numberOfNodes, edgeChance, seed, delta, iterations, distribution, generatedGraphsFolderPath, solutionGraphsFolderPath))
 	{
 		PrintUsage();
 		return -1;
@@ -33,6 +39,15 @@ int main(int argc, char *argv[])
 	if (saveSolutionGraphs && solutionGraphsFolderPath[solutionGraphsFolderPath.length() - 1] != '\\')
 		solutionGraphsFolderPath += "\\";
 
+	double minimumTime = ASDProjectTimeTester::GetMinimumTime();
+	double totalTime = 0.0;
+	int totalEdges = 0;
+
+	if (seed < 0.0)
+		RandomGenerator::SetSeed((double)clock());
+	else if(seed > 0.0)
+		RandomGenerator::SetSeed(seed);
+
 	for (int i = 0; i < numberOfGraphs; i++)
 	{
 		std::string graphName = "G" + std::to_string(i);
@@ -40,7 +55,7 @@ int main(int argc, char *argv[])
 		Graph graph;
 		graph.SetName(graphName, false);
 
-		if (RandomGraphGenerator::CreateRandomGraph(numberOfNodes, numberOfEdges, edgeChangePercentage, graph))
+		if (RandomGraphGenerator::CreateRandomGraph(numberOfNodes, edgeChangePercentage, graph))
 		{
 			if (saveGeneratedGraphs)
 			{
@@ -50,17 +65,27 @@ int main(int argc, char *argv[])
 				outputFile.close();
 			}
 
-			if (ASDProjectSolver::ProcessData(graph) && saveSolutionGraphs)
+			double time = ASDProjectTimeTester::ComputeAlgorithmTime(graph, iterations, distribution, minimumTime, delta);
+			int edges = graph.GetEdges().GetSize();
+
+			std::cout << "Time for the first graph (" << numberOfNodes << " nodes, " << edges << " edges): " << time << " seconds" << std::endl;
+			totalTime += time;
+			totalEdges += edges;
+
+			if (saveSolutionGraphs)
 			{
+				Graph result;
+				ASDProjectSolver::ProcessData(graph, result);
+
 				std::ofstream outputFile(solutionGraphsFolderPath + "out_" + graphName + ".dot");
 				if (outputFile.is_open())
-					DotWriter::Write(graph, outputFile);
+					DotWriter::Write(result, outputFile);
 				outputFile.close();
 			}
 		}
 	}
 
-	_CrtDumpMemoryLeaks();
+	std::cout << std::endl << "Average execution time for the algorithm on graphs with " << numberOfNodes << " nodes and an average of " << (totalEdges / numberOfGraphs) << " edges is " << (totalTime / ((double)numberOfGraphs)) << " seconds" << std::endl << std::endl;
 
 	return 0;
 }
@@ -69,25 +94,48 @@ void PrintUsage()
 {
 	std::cout
 		<< "USAGE:" << std::endl
-		<< "time_tester[.exe] -ng NumberOfGraphs -nn NumberOfNodes -ne NumberOfEdges -ec EdgeChance [-g GeneratedGraphsFolderPath] [-s SolutionsGraphsFolderPath]" << std::endl << std::endl
+		<< "time_tester[.exe] -ng NumberOfGraphs -nn NumberOfNodes -ec EdgeChance [-seed Seed] [-delta Delta] [-it Iterations] [-nordist Distribution] [-g GeneratedGraphsFolderPath] [-s SolutionsGraphsFolderPath]" << std::endl << std::endl
 		<< "Parameters:" << std::endl
-		<< "\tng: the number of graphs to generate for the test" << std::endl
-		<< "\tnn: the number of nodes for each generated graph" << std::endl
-		<< "\tne: the number of edges for each generated graph" << std::endl
-		<< "\tec: the chance of adding an edge, expressed in percentage (in the range [0..100])" << std::endl
-		<< "\tg: the folder where the generated graphs will be saved" << std::endl
-		<< "\ts: the folder where the solution graphs will be saved";
+		<< "\t-ng: the number of graphs to generate for the test" << std::endl
+		<< "\t-nn: the number of nodes for each generated graph" << std::endl
+		<< "\t-ec: the chance of adding an edge, expressed in percentage (in the range [0..100])" << std::endl
+		<< "\t-seed: the seed used to generate the random graphs (< 0: use random seed; 0: use default seed; > 0: use given seed)" << std::endl
+		<< "\t-delta: maximum error threshold. When we find a measurement with an error below this number we treat it as valid" << std::endl
+		<< "\t-it: number of times to run the algorithm each time until enough data is collected for each graph" << std::endl
+		<< "\t-nordist: normal distribution value" << std::endl
+		<< "\t-g: the folder where the generated graphs will be saved" << std::endl
+		<< "\t-s: the folder where the solution graphs will be saved";
 }
 
-bool ParseArgs(int argc, char *argv[], int& numberOfGraphs, int& numberOfNodes, int& numberOfEdges, int& edgeChance, std::string& generatedGraphsFolderPath, std::string& solutionGraphsFolderPath)
+bool ParseArgs(
+	int argc,
+	char *argv[],
+	int& numberOfGraphs,
+	int& numberOfNodes,
+	int& edgeChance,
+	double& seed,
+	double& delta,
+	int& iterations,
+	double& distribution,
+	std::string& generatedGraphsFolderPath,
+	std::string& solutionGraphsFolderPath)
 {
 	// An unsufficient number of arguments were given
-	if (argc < 9)
+	if (argc < 7)
 		return false;
+
+	numberOfGraphs = 1;
+	numberOfNodes = 10;
+	edgeChance = 15;
+	seed = 0;
+	delta = 0.2;
+	iterations = 7;
+	distribution = 1.96;
+	generatedGraphsFolderPath = "";
+	solutionGraphsFolderPath = "";
 
 	bool foundNumberOfGraphs = false;
 	bool foundNumberOfNodes = false;
-	bool foundNumberOfEdges = false;
 	bool foundEdgeChance = false;
 	
 	// Loop adding always 2 (option + value)
@@ -114,15 +162,6 @@ bool ParseArgs(int argc, char *argv[], int& numberOfGraphs, int& numberOfNodes, 
 			numberOfNodes = atoi(strValue.c_str());
 			foundNumberOfNodes = true;
 		}
-		else if (strOption == "-ne")
-		{
-			// If the value starts with a '-' then it is an option
-			if (strValue[0] == '-')
-				return false;
-
-			numberOfEdges = atoi(strValue.c_str());
-			foundNumberOfEdges = true;
-		}
 		else if (strOption == "-ec")
 		{
 			// If the value starts with a '-' then it is an option
@@ -132,6 +171,14 @@ bool ParseArgs(int argc, char *argv[], int& numberOfGraphs, int& numberOfNodes, 
 			edgeChance = atoi(strValue.c_str());
 			foundEdgeChance = true;
 		}
+		else if (strOption == "-seed")
+			seed = atof(strValue.c_str());
+		else if (strOption == "-delta")
+			delta = atof(strValue.c_str());
+		else if (strOption == "-it")
+			iterations = atoi(strValue.c_str());
+		else if (strOption == "-nordist")
+			distribution = atof(strValue.c_str());
 		else if (strOption == "-g")
 		{
 			// If the value starts with a '-' then it is an option
@@ -150,5 +197,5 @@ bool ParseArgs(int argc, char *argv[], int& numberOfGraphs, int& numberOfNodes, 
 		}
 	}
 
-	return foundNumberOfGraphs && foundNumberOfNodes && foundNumberOfEdges && foundEdgeChance;
+	return foundNumberOfGraphs && foundNumberOfNodes && foundEdgeChance;
 }

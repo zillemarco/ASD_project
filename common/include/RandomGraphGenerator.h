@@ -13,5 +13,5 @@ public:
 	* result: the resulting graph will be stored here
 	* Returns false if this method can't add the number of nodes and edges as requested
 	*/
-	static bool CreateRandomGraph(int numberOfNodes, int numberOfEdges, double edgeChance, Graph& result);
+	static bool CreateRandomGraph(int numberOfNodes, double edgeChance, Graph& result);
 };

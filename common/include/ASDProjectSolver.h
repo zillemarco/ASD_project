@@ -15,8 +15,8 @@ public:
 	/** Process the data reading the DOT data from the given dotFileContent and returns the result into the 'result' graph */
 	static bool ProcessData(Graph& result, const std::string& dotFileContent);
 
-	/** Process the given graph and modifies it to solve the project */
-	static bool ProcessData(Graph& result);
+	/** Process the given graph and solves the project saving the result into the graph 'result' */
+	static bool ProcessData(const Graph& inputGraph, Graph& result);
 	
 private:
 	static Node* FindBestRoot(Graph& graph, int& addedEdges);
