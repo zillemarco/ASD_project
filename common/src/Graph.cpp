@@ -1,7 +1,5 @@
 #include "Graph.h"
 
-#include "Stack.h"
-
 /**
 * Comparator used by Graph::AddEdge to check if an edge with the
 * given start and end nodes exists
