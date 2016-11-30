@@ -1,8 +1,22 @@
 #pragma once
 
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 #include "ContainersCommon.h"
 
 #include <iostream>
+
+#ifdef _DEBUG
+#define DEBUG_CLIENTBLOCK new( _CLIENT_BLOCK, __FILE__, __LINE__)
+#else
+#define DEBUG_CLIENTBLOCK
+#endif // _DEBUG
+
+#ifdef _DEBUG
+#define new DEBUG_CLIENTBLOCK
+#endif
 
 template<
 	typename T, /** Type of objects to be stored inside the list */
@@ -56,7 +70,7 @@ private:
 			src._isUsed = false;
 		}
 
-		~ListItem()
+		virtual ~ListItem()
 		{
 			_isUsed = false;
 			_next = nullptr;
@@ -588,27 +602,27 @@ private:
 
 	void Grow(int amount)
 	{
-		// First initialization of the list
-		if (_head == nullptr && _freeItemsHead == nullptr)
-		{
-			if (_tail != nullptr || _freeItemsTail != nullptr)
-			{
-				std::cerr << "List error [Grow]: inconsisten list." << std::endl;
-				return;
-			}
+		//// First initialization of the list
+		//if (_head == nullptr && _freeItemsHead == nullptr)
+		//{
+		//	if (_tail != nullptr || _freeItemsTail != nullptr)
+		//	{
+		//		std::cerr << "List error [Grow]: inconsisten list." << std::endl;
+		//		return;
+		//	}
 
-			// Create the first free element and setup all the pointers and the sizes
-			_freeItemsHead = new ListItem(DefaultValue());
-			_freeItemsTail = _freeItemsHead;
+		//	// Create the first free element and setup all the pointers and the sizes
+		//	_freeItemsHead = new ListItem(DefaultValue());
+		//	_freeItemsTail = _freeItemsHead;
 
-			_head = nullptr;
-			_tail = nullptr;
-			_capacity = 1;
-			_size = 0;
-			
-			// Since we just added an item, the head, decrease the number of items to add
-			amount--;
-		}
+		//	_head = nullptr;
+		//	_tail = nullptr;
+		//	_capacity = 1;
+		//	_size = 0;
+		//	
+		//	// Since we just added an item, the head, decrease the number of items to add
+		//	amount--;
+		//}
 
 		// Add the items to the list
 		while (amount > 0)
@@ -733,40 +747,39 @@ public:
 
 		if (_freeItemsHead == nullptr)
 		{
-			std::cerr << "List error [Add]: _currentItem is nullptr. The list is invalid" << std::endl;
+			std::cerr << "List error [Add]: _freeItemsHead is nullptr. The list is invalid" << std::endl;
 			return *this;
 		}
 
-		// Save the element inside the first free item
-		_freeItemsHead->_element = element;
-		_freeItemsHead->_isUsed = true;
+		ListItem* itemToAdd = _freeItemsHead;
+		ListItem* itemToAddNext = itemToAdd->_next;
 
-		// Memorize the current free items list head next element to use it later since
-		// if _head is nullptr _head->_next is put to nullptr, which is the same as _freeItemsHead->_next
-		// and it can break the list links
-		ListItem* freeItemsHeadNext = _freeItemsHead->_next;
+		// Save the element inside the first free item
+		itemToAdd->_element = element;
+		itemToAdd->_isUsed = true;
 
 		// If _head is nullptr the list was empty so set it up
 		if (_head == nullptr)
 		{
 			// Head and tail are the same
-			_head = _tail = _freeItemsHead;
-			
+			_head = _tail = itemToAdd;
+
 			_head->_next = nullptr;
 			_head->_prev = nullptr;
 		}
 		else
 		{
 			// Make the new last item _prev point to the current tail of the list
-			_freeItemsHead->_prev = _tail;
+			itemToAdd->_prev = _tail;
 
 			// Make the current list tail _next point to the new last item
-			_tail->_next = _freeItemsHead;
+			_tail->_next = itemToAdd;
 
 			// Make the new last item the tail of the list
-			_tail = _freeItemsHead;
+			_tail = itemToAdd;
 		}
-		
+
+
 		// Remove the first free item from the free items list
 		{
 			// If the free items head and tail are equal then there was only one free element so set both free items head and tail to nullptr
@@ -776,10 +789,10 @@ public:
 				_freeItemsTail = nullptr;
 			}
 			// Set the sencond free item as the free items list head
-			else if (freeItemsHeadNext)
+			else if (itemToAddNext)
 			{
-				freeItemsHeadNext->_prev = nullptr;
-				_freeItemsHead = freeItemsHeadNext;
+				itemToAddNext->_prev = nullptr;
+				_freeItemsHead = itemToAddNext;
 			}
 		}
 
@@ -788,6 +801,58 @@ public:
 
 		// Increment the number of stored elements
 		_size++;
+
+		// // Save the element inside the first free item
+		// _freeItemsHead->_element = element;
+		// _freeItemsHead->_isUsed = true;
+		// 
+		// // Memorize the current free items list head next element to use it later since
+		// // if _head is nullptr _head->_next is put to nullptr, which is the same as _freeItemsHead->_next
+		// // and it can break the list links
+		// ListItem* freeItemsHeadNext = _freeItemsHead->_next;
+		// 
+		// // If _head is nullptr the list was empty so set it up
+		// if (_head == nullptr)
+		// {
+		// 	// Head and tail are the same
+		// 	_head = _tail = _freeItemsHead;
+		// 	
+		// 	_head->_next = nullptr;
+		// 	_head->_prev = nullptr;
+		// }
+		// else
+		// {
+		// 	// Make the new last item _prev point to the current tail of the list
+		// 	_freeItemsHead->_prev = _tail;
+		// 
+		// 	// Make the current list tail _next point to the new last item
+		// 	_tail->_next = _freeItemsHead;
+		// 
+		// 	// Make the new last item the tail of the list
+		// 	_tail = _freeItemsHead;
+		// }
+		// 
+		// // Remove the first free item from the free items list
+		// {
+		// 	// If the free items head and tail are equal then there was only one free element so set both free items head and tail to nullptr
+		// 	if (_freeItemsTail == _freeItemsHead)
+		// 	{
+		// 		_freeItemsHead = nullptr;
+		// 		_freeItemsTail = nullptr;
+		// 	}
+		// 	// Set the sencond free item as the free items list head
+		// 	else if (freeItemsHeadNext)
+		// 	{
+		// 		freeItemsHeadNext->_prev = nullptr;
+		// 		_freeItemsHead = freeItemsHeadNext;
+		// 	}
+		// }
+		// 
+		// // Break the link between the last valid item and the first free item
+		// _tail->_next = nullptr;
+		// 
+		// // Increment the number of stored elements
+		// _size++;
 
 		return *this;
 	}
@@ -1152,63 +1217,119 @@ public:
 		bool grown = _capacity < elementsToKeep;
 		bool keepElements = elementsToKeep > 0;
 
-		if (_capacity > 0)
+		if (_capacity < _size)
 		{
-			// Only if _size is more than 0 then there are used items to put at the end of the free list
-			if (_size > 0)
+			std::cerr << "List error [Clear]: the list contains more elements than it can store" << std::endl;
+			return *this;
+		}
+
+		// If the size is already 0 then all the items are already inside the free items list
+		if (_capacity > 0 && _size > 0)
+		{
+			// If the free items list is empty move all the used items to the free list items
+			if (_freeItemsHead == nullptr)
 			{
-				// If the free items list is empty put at least one element inside of it to simplify the next code
-				if (_freeItemsHead == nullptr)
+				if (_freeItemsTail != nullptr)
 				{
-					if (_freeItemsTail != nullptr)
-					{
-						std::cerr << "List error [Clear]: _freeItemsHead is nullptr but _freeItemsTail is not. Invalid list" << std::endl;
-						return *this;
-					}
-					
-					// Bring the valid items list head to the free items list
-					_freeItemsHead = _head;
-					_freeItemsTail = _freeItemsHead;
-
-					if (_head->_next)
-						_head->_next->_prev = nullptr;
-
-					if (_head == _tail)
-						_tail = nullptr;
-
-					_head = _head->_next;
-
-					_freeItemsHead->_next = nullptr;
-					_freeItemsTail->_next = nullptr;
+					std::cerr << "List error [Clear]: _freeItemsHead is nullptr but _freeItemsTail is not. Invalid list" << std::endl;
+					return *this;
 				}
 
-				// Check again if _head is valid since the previous code could have set it to nullptr if there was only one valid element inside the list
-				if (_head)
+				_freeItemsHead = _head;
+				_freeItemsTail = _tail;
+
+				_head = nullptr;
+				_tail = nullptr;
+			}
+			// Otherwise if there are used items move the used items at the end of the free items
+			else if(_head != nullptr)
+			{
+				if (_tail == nullptr)
 				{
-					if (freeItemsHeadWasNullptr == false)
-					{
-						int j = 0;
-						j++;
-					}
-
-					if (_tail == nullptr)
-					{
-						std::cerr << "List error [Clear]: _tail is nullptr but _head is not. Invalid list" << std::endl;
-						return *this;
-					}
-
-					// Put the valid items list at the end of the free items list
-					_freeItemsTail->_next = _head;
-					_head->_prev = _freeItemsTail;
-
-					_freeItemsTail = _tail;
-
-					// Set the used items list head and tail as nullptr to mark the used items list as empty
-					_head = nullptr;
-					_tail = nullptr;
+					std::cerr << "List error [Clear]: _tail is nullptr but _head is not. Invalid list" << std::endl;
+					return *this;
 				}
+
+				if (_freeItemsTail == nullptr)
+				{
+					std::cerr << "List error [Clear]: _freeItemsHead is not nullptr but _freeItemsTail is. Invalid list" << std::endl;
+					return *this;
+				}
+
+				// Put the valid items list at the end of the free items list
+				_freeItemsTail->_next = _head;
+				_head->_prev = _freeItemsTail;
+
+				_freeItemsTail = _tail;
+
+				// Set the used items list head and tail as nullptr to mark the used items list as empty
+				_head = nullptr;
+				_tail = nullptr;
+			}
+			else
+			{
+				std::cerr << "List error [Clear]: the list has a size and capacity but both the heads are not valid" << std::endl;
+				return *this;
 			}
 		}
+
+		// if (_capacity > 0)
+		// {
+		// 	// Only if _size is more than 0 then there are used items to put at the end of the free list
+		// 	if (_size > 0)
+		// 	{
+		// 		// If the free items list is empty put at least one element inside of it to simplify the next code
+		// 		if (_freeItemsHead == nullptr)
+		// 		{
+		// 			if (_freeItemsTail != nullptr)
+		// 			{
+		// 				std::cerr << "List error [Clear]: _freeItemsHead is nullptr but _freeItemsTail is not. Invalid list" << std::endl;
+		// 				return *this;
+		// 			}
+		// 			
+		// 			// Bring the valid items list head to the free items list
+		// 			_freeItemsHead = _head;
+		// 			_freeItemsTail = _freeItemsHead;
+		// 
+		// 			if (_head->_next)
+		// 				_head->_next->_prev = nullptr;
+		// 
+		// 			if (_head == _tail)
+		// 				_tail = nullptr;
+		// 
+		// 			_head = _head->_next;
+		// 
+		// 			_freeItemsHead->_next = nullptr;
+		// 			_freeItemsTail->_next = nullptr;
+		// 		}
+		// 
+		// 		// Check again if _head is valid since the previous code could have set it to nullptr if there was only one valid element inside the list
+		// 		if (_head)
+		// 		{
+		// 			if (freeItemsHeadWasNullptr == false)
+		// 			{
+		// 				int j = 0;
+		// 				j++;
+		// 			}
+		// 
+		// 			if (_tail == nullptr)
+		// 			{
+		// 				std::cerr << "List error [Clear]: _tail is nullptr but _head is not. Invalid list" << std::endl;
+		// 				return *this;
+		// 			}
+		// 
+		// 			// Put the valid items list at the end of the free items list
+		// 			_freeItemsTail->_next = _head;
+		// 			_head->_prev = _freeItemsTail;
+		// 
+		// 			_freeItemsTail = _tail;
+		// 
+		// 			// Set the used items list head and tail as nullptr to mark the used items list as empty
+		// 			_head = nullptr;
+		// 			_tail = nullptr;
+		// 		}
+		// 	}
+		// }
 
 		freeItemsHeadPrevIsValid = _freeItemsHead != nullptr && _freeItemsHead->_prev && _freeItemsHead->_prev->_next != nullptr;
 
@@ -1252,6 +1373,10 @@ public:
 			{
 				// Set _freeItemsTail as the last item on the free items list
 				_freeItemsTail = currentItem->_prev;
+
+				// Make sure that the free items list tail doesn't point to a next item
+				if (_freeItemsTail)
+					_freeItemsTail->_next = nullptr;
 			}
 
 			int cycles = 0;
@@ -1261,10 +1386,10 @@ public:
 			{
 				ListItem* nextItem = currentItem->_next;
 
-				// Ensure that currentItem previous item doesn't point to currentItem otherwise there
-				// will be errors because _freeItemsTail would have _next to point to dirty memory
-				if (currentItem->_prev)
-					currentItem->_prev->_next = nullptr;
+				// // Ensure that currentItem previous item doesn't point to currentItem otherwise there
+				// // will be errors because _freeItemsTail would have _next to point to dirty memory
+				// if (currentItem->_prev)
+				// 	currentItem->_prev->_next = nullptr;
 
 				// Call ElementDtor only if the item points to a valid element
 				if (currentItem->_isUsed && callElementDestructor)
@@ -1278,10 +1403,10 @@ public:
 				cycles++;
 			}
 
-			// If the tail is nullptr then we have cleared all the list
-			// so set _freeItemsHead to nullptr too
-			if (_freeItemsTail == nullptr)
-				_freeItemsHead = nullptr;
+			//// If the tail is nullptr then we have cleared all the list
+			//// so set _freeItemsHead to nullptr too
+			//if (_freeItemsTail == nullptr)
+			//	_freeItemsHead = nullptr;
 		}
 		
 		// Set the size to 0 to mark the list as empty
