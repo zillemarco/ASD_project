@@ -76,16 +76,16 @@ struct NodeComparator
 
 /** Default constructor */
 Graph::Graph()
-	: _name("")
+	: _graphType(GT_NotValid)
+	, _name("")
 	, _encloseNameInDoubleQuotes(false)
-	, _graphType(GT_NotValid)
 { }
 
 /** Constructor for basic initialization */
 Graph::Graph(const std::string& name, bool encloseNameInDoubleQuotes, GraphType type)
-	: _name(name)
+	: _graphType(type)
+	, _name(name)
 	, _encloseNameInDoubleQuotes(encloseNameInDoubleQuotes)
-	, _graphType(type)
 { }
 
 /** Copy constructor */
@@ -96,11 +96,11 @@ Graph::Graph(const Graph& src)
 
 /** Move constructor */
 Graph::Graph(Graph&& src)
-	: _edges(std::move(src._edges))
-	, _nodes(std::move(src._nodes))
+	: _graphType(std::move(src._graphType))
 	, _name(std::move(src._name))
 	, _encloseNameInDoubleQuotes(std::move(src._encloseNameInDoubleQuotes))
-	, _graphType(std::move(src._graphType))
+	, _edges(std::move(src._edges))
+	, _nodes(std::move(src._nodes))
 { }
 
 /** Destructor */

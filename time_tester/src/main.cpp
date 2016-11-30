@@ -33,11 +33,11 @@ int main(int argc, char *argv[])
 	bool saveGeneratedGraphs = generatedGraphsFolderPath.empty() == false;
 	bool saveSolutionGraphs = solutionGraphsFolderPath.empty() == false;
 
-	if (saveGeneratedGraphs && generatedGraphsFolderPath[generatedGraphsFolderPath.length() - 1] != '\\')
-		generatedGraphsFolderPath += "\\";
+	if (saveGeneratedGraphs && generatedGraphsFolderPath[generatedGraphsFolderPath.length() - 1] != '/')
+		generatedGraphsFolderPath += "/";
 
-	if (saveSolutionGraphs && solutionGraphsFolderPath[solutionGraphsFolderPath.length() - 1] != '\\')
-		solutionGraphsFolderPath += "\\";
+	if (saveSolutionGraphs && solutionGraphsFolderPath[solutionGraphsFolderPath.length() - 1] != '/')
+		solutionGraphsFolderPath += "/";
 
 	double minimumTime = ASDProjectTimeTester::GetMinimumTime();
 	double totalTime = 0.0;
