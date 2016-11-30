@@ -18,6 +18,11 @@ source_group(solver\\src        FILES ${SOLVER_SRC})
 
 add_executable(${PROJECT_NAME} ${COMMON_INC} ${COMMON_SRC} ${SOLVER_INC} ${SOLVER_SRC})
 
+# On UNIX we need to include the math library manually
+if(UNIX)
+	target_link_libraries(${PROJECT_NAME} m)
+endif()
+
 set_target_properties(${PROJECT_NAME} PROPERTIES RELEASE_POSTFIX        "${RELEASE_SUFFIX}")
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX          "${DEBUG_SUFFIX}")
 set_target_properties(${PROJECT_NAME} PROPERTIES MINSIZEREL_POSTFIX     "${MIN_SIZE_RELEASE_SUFFIX}")

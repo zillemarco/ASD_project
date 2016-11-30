@@ -99,7 +99,7 @@ Node* ASDProjectSolver::FindBestRoot(Graph& graph, int& addedEdges)
 
 	// If bestAddedEdges is still negative then we couldn't find any valid root
 	if (bestAddedEdges == -1)
-		return false;
+		return nullptr;
 	
 	// Move the best graph to the result and return true
 	// Using std::move to save up some loops inside the graph copy ctor

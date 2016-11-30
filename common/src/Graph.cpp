@@ -305,7 +305,10 @@ Graph& Graph::RemoveEdge(int edgeIndex)
 {
 	// Make sure the index is valid
 	if (edgeIndex >= 0 && edgeIndex < _edges.GetSize())
-		return RemoveEdgeWithIterator(_edges.GetIteratorAt(edgeIndex));
+	{
+		EdgeList::Iterator it = _edges.GetIteratorAt(edgeIndex);
+		return RemoveEdgeWithIterator(it);
+	}
 	return *this;
 }
 
@@ -523,7 +526,7 @@ Graph::NodePointersList Graph::GetUnreachableNodes(Node* node, bool setNodesColo
 
 	// Make sure we have a valid node as input
 	if (node == nullptr)
-		result;
+		return result;
 
 	Node::NodeColor* nodesColor = nullptr;
 

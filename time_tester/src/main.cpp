@@ -104,7 +104,7 @@ void PrintUsage()
 		<< "\t-it: number of times to run the algorithm each time until enough data is collected for each graph" << std::endl
 		<< "\t-nordist: normal distribution value" << std::endl
 		<< "\t-g: the folder where the generated graphs will be saved" << std::endl
-		<< "\t-s: the folder where the solution graphs will be saved";
+		<< "\t-s: the folder where the solution graphs will be saved" << std::endl;
 }
 
 bool ParseArgs(

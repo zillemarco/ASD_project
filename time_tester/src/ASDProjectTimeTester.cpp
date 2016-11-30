@@ -2,6 +2,7 @@
 #include "ASDProjectSolver.h"
 
 #include <ctime>
+#include <cmath>
 
 /**
 * Method that returns a double precision floating point time value.
